@@ -1,40 +1,40 @@
 package cliby
 
 import (
-	"github.com/coryb/optigo"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/coryb/optigo"
 	"github.com/kballard/go-shellquote"
 	"github.com/op/go-logging"
 	"gopkg.in/coryb/yaml.v2"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"net/http/cookiejar"
+	"net/url"
 	// "net/url"
+	"github.com/coryb/cliby/util"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
-	"github.com/coryb/cliby/util"
 )
 
 var log = logging.MustGetLogger("cliby")
 
 type Cli struct {
-	CookieFile string
-	UA         *http.Client
-	Usage func()string
-	Commands map[string]func()error
+	CookieFile     string
+	UA             *http.Client
+	Usage          func() string
+	Commands       map[string]func() error
 	CommandAliases map[string]string
-	Defaults map[string]interface{}
-	Opts map[string]interface{}
-	Args []string
-	Options optigo.OptionParser
-	Templates map[string]string
-	Name string
+	Defaults       map[string]interface{}
+	Opts           map[string]interface{}
+	Args           []string
+	Options        optigo.OptionParser
+	Templates      map[string]string
+	Name           string
 }
 
 func New(name string) *Cli {
@@ -43,12 +43,12 @@ func New(name string) *Cli {
 	cli := &Cli{
 		CookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
 		UA:         &http.Client{},
-		Name: name,
-		Opts: make(map[string]interface{}),
+		Name:       name,
+		Opts:       make(map[string]interface{}),
 		Defaults: map[string]interface{}{
 			"config-file": fmt.Sprintf(".%s.d/config.yml", name),
 		},
-		Commands: make(map[string]func()error),
+		Commands:       make(map[string]func() error),
 		CommandAliases: make(map[string]string),
 	}
 
@@ -111,11 +111,10 @@ func (c *Cli) ProcessAllOptions() string {
 	return c.processConfigs()
 }
 
-
 func (c *Cli) processConfigs() string {
 	c.Args = c.Options.Args
 	c.Opts = c.Options.Results
-	
+
 	var command string
 	if len(c.Args) > 0 {
 		if _, ok := c.Commands[c.Args[0]]; ok {
@@ -218,7 +217,7 @@ func (c *Cli) loadConfigs() {
 	} else {
 		configFile = c.Defaults["config-file"].(string)
 	}
-	
+
 	paths := util.FindParentPaths(configFile)
 	// prepend
 	paths = append([]string{fmt.Sprintf("/etc/%s.yml", c.Name)}, paths...)
