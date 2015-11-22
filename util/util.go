@@ -258,6 +258,13 @@ func PromptYN(prompt string, yes bool) bool {
 	return false
 }
 
+func Prompt(prompt string) {
+	reader := bufio.NewReader(os.Stdin)
+	prompt = fmt.Sprintf("%s [ENTER]", prompt)
+	fmt.Printf("%s", prompt)
+	reader.ReadString('\n')
+}
+
 func ParseYaml(file string, opts map[string]interface{}) {
 	if fh, err := ioutil.ReadFile(file); err == nil {
 		log.Debug("Found Config file: %s", file)
