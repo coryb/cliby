@@ -16,21 +16,13 @@ PLATFORMS= \
 DIST=$(shell pwd)/dist
 export GOPATH=$(shell pwd)
 
-DEPS= \
-	github.com/coryb/optigo \
-	github.com/kballard/go-shellquote \
-	github.com/mgutz/ansi \
-	github.com/op/go-logging \
-	gopkg.in/coryb/yaml.v2
-
-test:
-	go get -v $(DEPS)
+test: src/github.com/coryb/cliby
 	go test -v
 
-build:
-	cd src/github.com/Netflix-Skunkworks/go-jira/jira; \
-	go get -v
-
+src/%:
+	mkdir -p $(@D)
+	test -L $@ || ln -sf ../../.. $@
+	go get -v $*
 
 cross-setup:
 	for p in $(PLATFORMS); do \
@@ -49,16 +41,12 @@ all:
    done
 
 fmt:
-	gofmt -s -w jira
+	gofmt -s -w *.go util/*.go
 
 install:
 	export GOBIN=~/bin && ${MAKE} build
 
-# need gsort on OSX (brew install coreutils) or newer sort on linux
-# that supports the -V option for version sorting
-SORT=gsort
-
-CURVER ?= $(shell git fetch --tags && git tag | $(SORT) -V | tail -1)
+CURVER ?= $(shell git describe --abbrev=0 --tags)
 NEWVER ?= $(shell echo $(CURVER) | awk -F. '{print $$1"."$$2"."$$3+1}')
 TODAY  := $(shell date +%Y-%m-%d)
 
@@ -71,14 +59,12 @@ update-changelog:
 	echo "## $(NEWVER) - $(TODAY)" >> CHANGELOG.md.new; \
 	echo >> CHANGELOG.md.new; \
 	$(MAKE) changes | \
-	perl -pe 's{\[([a-f0-9]+)\]}{[[$$1](https://github.com/Netflix-Skunkworks/go-jira/commit/$$1)]}g' | \
-	perl -pe 's{\#(\d+)}{[#$$1](https://github.com/Netflix-Skunkworks/go-jira/issues/$$1)}g' >> CHANGELOG.md.new; \
+	perl -pe 's{\[([a-f0-9]+)\]}{[[$$1](https://github.com/coryb/cliby/commit/$$1)]}g' | \
+	perl -pe 's{\#(\d+)}{[#$$1](https://github.com/coryb/cliby/issues/$$1)}g' >> CHANGELOG.md.new; \
 	tail +2 CHANGELOG.md >> CHANGELOG.md.new; \
 	mv CHANGELOG.md.new CHANGELOG.md; \
 	git commit -m "Updated Changelog" CHANGELOG.md; \
-	perl -pi -e "s/version: $(CURVER)/version: $(NEWVER)/" jira/main.go; \
-	git commit -m "bump version" jira/main.go; \
 	git tag $(NEWVER)
 
 clean:
-	rm -rf pkg dist bin && find src \! -path \*/go-jira\* -delete
+	rm -rf pkg dist bin src

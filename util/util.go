@@ -1,4 +1,4 @@
-package cliby
+package util
 
 import (
 	"bufio"
@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mgutz/ansi"
+	"gopkg.in/coryb/yaml.v2"
+	"github.com/op/go-logging"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +17,8 @@ import (
 	"text/template"
 	"time"
 )
+
+var log = logging.MustGetLogger("util")
 
 func FindParentPaths(fileName string) []string {
 	cwd, _ := os.Getwd()
@@ -53,7 +57,7 @@ func FindClosestParentPath(fileName string) (string, error) {
 	return "", errors.New(fmt.Sprintf("%s not found in parent directory hierarchy", fileName))
 }
 
-func readFile(file string) string {
+func ReadFile(file string) string {
 	var bytes []byte
 	var err error
 	if bytes, err = ioutil.ReadFile(file); err != nil {
@@ -63,7 +67,7 @@ func readFile(file string) string {
 	return string(bytes)
 }
 
-func copyFile(src, dst string) (err error) {
+func CopyFile(src, dst string) (err error) {
 	var s, d *os.File
 	if s, err = os.Open(src); err == nil {
 		defer s.Close()
@@ -78,7 +82,7 @@ func copyFile(src, dst string) (err error) {
 	return
 }
 
-func fuzzyAge(start string) (string, error) {
+func FuzzyAge(start string) (string, error) {
 	if t, err := time.Parse("2006-01-02T15:04:05.000-0700", start); err != nil {
 		return "", err
 	} else {
@@ -100,7 +104,7 @@ func fuzzyAge(start string) (string, error) {
 	return "unknown", nil
 }
 
-func runTemplate(templateContent string, data interface{}, out io.Writer) error {
+func RunTemplate(templateContent string, data interface{}, out io.Writer) error {
 
 	if out == nil {
 		out = os.Stdout
@@ -169,7 +173,7 @@ func runTemplate(templateContent string, data interface{}, out io.Writer) error 
 			return buffer.String()
 		},
 		"age": func(content string) (string, error) {
-			return fuzzyAge(content)
+			return FuzzyAge(content)
 		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
@@ -184,12 +188,12 @@ func runTemplate(templateContent string, data interface{}, out io.Writer) error 
 	return nil
 }
 
-func responseToJson(resp *http.Response, err error) (interface{}, error) {
+func ResponseToJson(resp *http.Response, err error) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
 
-	data := jsonDecode(resp.Body)
+	data := JsonDecode(resp.Body)
 	if resp.StatusCode == 400 {
 		if val, ok := data.(map[string]interface{})["errorMessages"]; ok {
 			for _, errMsg := range val.([]interface{}) {
@@ -201,7 +205,7 @@ func responseToJson(resp *http.Response, err error) (interface{}, error) {
 	return data, nil
 }
 
-func jsonDecode(io io.Reader) interface{} {
+func JsonDecode(io io.Reader) interface{} {
 	content, err := ioutil.ReadAll(io)
 	var data interface{}
 	err = json.Unmarshal(content, &data)
@@ -211,7 +215,7 @@ func jsonDecode(io io.Reader) interface{} {
 	return data
 }
 
-func jsonEncode(data interface{}) (string, error) {
+func JsonEncode(data interface{}) (string, error) {
 	buffer := bytes.NewBuffer(make([]byte, 0))
 	enc := json.NewEncoder(buffer)
 
@@ -223,7 +227,7 @@ func jsonEncode(data interface{}) (string, error) {
 	return buffer.String(), nil
 }
 
-func jsonWrite(file string, data interface{}) {
+func JsonWrite(file string, data interface{}) {
 	fh, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	defer fh.Close()
 	if err != nil {
@@ -234,7 +238,7 @@ func jsonWrite(file string, data interface{}) {
 	enc.Encode(data)
 }
 
-func promptYN(prompt string, yes bool) bool {
+func PromptYN(prompt string, yes bool) bool {
 	reader := bufio.NewReader(os.Stdin)
 	if !yes {
 		prompt = fmt.Sprintf("%s [y/N]: ", prompt)
@@ -254,7 +258,14 @@ func promptYN(prompt string, yes bool) bool {
 	return false
 }
 
-func yamlFixup(data interface{}) (interface{}, error) {
+func ParseYaml(file string, opts map[string]interface{}) {
+	if fh, err := ioutil.ReadFile(file); err == nil {
+		log.Debug("Found Config file: %s", file)
+		yaml.Unmarshal(fh, &opts)
+	}
+}
+
+func YamlFixup(data interface{}) (interface{}, error) {
 	switch d := data.(type) {
 	case map[interface{}]interface{}:
 		// need to copy this map into a string map so json can encode it
@@ -262,7 +273,7 @@ func yamlFixup(data interface{}) (interface{}, error) {
 		for key, val := range d {
 			switch k := key.(type) {
 			case string:
-				if fixed, err := yamlFixup(val); err != nil {
+				if fixed, err := YamlFixup(val); err != nil {
 					return nil, err
 				} else if fixed != nil {
 					copy[k] = fixed
@@ -277,7 +288,7 @@ func yamlFixup(data interface{}) (interface{}, error) {
 	case map[string]interface{}:
 		copy := make(map[string]interface{})
 		for k, v := range d {
-			if fixed, err := yamlFixup(v); err != nil {
+			if fixed, err := YamlFixup(v); err != nil {
 				return nil, err
 			} else if fixed != nil {
 				copy[k] = fixed
@@ -287,7 +298,7 @@ func yamlFixup(data interface{}) (interface{}, error) {
 	case []interface{}:
 		copy := make([]interface{}, 0, len(d))
 		for _, val := range d {
-			if fixed, err := yamlFixup(val); err != nil {
+			if fixed, err := YamlFixup(val); err != nil {
 				return nil, err
 			} else if fixed != nil {
 				copy = append(copy, fixed)
@@ -304,7 +315,7 @@ func yamlFixup(data interface{}) (interface{}, error) {
 	}
 }
 
-func mkdir(dir string) error {
+func Mkdir(dir string) error {
 	if stat, err := os.Stat(dir); err != nil && !os.IsNotExist(err) {
 		log.Error("Failed to stat %s: %s", dir, err)
 		return err

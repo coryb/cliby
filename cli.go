@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"github.com/coryb/cliby/util"
 )
 
 var log = logging.MustGetLogger("cliby")
@@ -40,11 +41,13 @@ func New(name string) *Cli {
 	homedir := os.Getenv("HOME")
 
 	cli := &Cli{
-		CookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", name, homedir),
+		CookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
 		UA:         &http.Client{},
 		Name: name,
 		Opts: make(map[string]interface{}),
-		Defaults: make(map[string]interface{}),
+		Defaults: map[string]interface{}{
+			"config-file": fmt.Sprintf(".%s.d/config.yml", name),
+		},
 		Commands: make(map[string]func()error),
 		CommandAliases: make(map[string]string),
 	}
@@ -187,13 +190,6 @@ func (c *Cli) SetEditing(dflt bool) {
 	}
 }
 
-func parseYaml(file string, opts map[string]interface{}) {
-	if fh, err := ioutil.ReadFile(file); err == nil {
-		log.Debug("Found Config file: %s", file)
-		yaml.Unmarshal(fh, &opts)
-	}
-}
-
 func (c *Cli) populateEnv() {
 	for k, v := range c.Opts {
 		envName := fmt.Sprintf("%s_%s", strings.ToUpper(c.Name), strings.ToUpper(k))
@@ -216,7 +212,14 @@ func (c *Cli) populateEnv() {
 
 func (c *Cli) loadConfigs() {
 	c.populateEnv()
-	paths := FindParentPaths(fmt.Sprintf(".%s.d/config.yml", c.Name))
+	var configFile string
+	if val, ok := c.Opts["config-file"].(string); ok && val != "" {
+		configFile = val
+	} else {
+		configFile = c.Defaults["config-file"].(string)
+	}
+	
+	paths := util.FindParentPaths(configFile)
 	// prepend
 	paths = append([]string{fmt.Sprintf("/etc/%s.yml", c.Name)}, paths...)
 
@@ -227,7 +230,7 @@ func (c *Cli) loadConfigs() {
 			tmp := make(map[string]interface{})
 			// check to see if config file is exectuable
 			if stat.Mode()&0111 == 0 {
-				parseYaml(file, tmp)
+				util.ParseYaml(file, tmp)
 			} else {
 				log.Debug("Found Executable Config file: %s", file)
 				// it is executable, so run it and try to parse the output
@@ -273,9 +276,9 @@ func (c *Cli) saveCookies(cookies []*http.Cookie) {
 		for _, v := range currentCookiesByName {
 			mergedCookies = append(mergedCookies, v)
 		}
-		jsonWrite(c.CookieFile, mergedCookies)
+		util.JsonWrite(c.CookieFile, mergedCookies)
 	} else {
-		jsonWrite(c.CookieFile, cookies)
+		util.JsonWrite(c.CookieFile, cookies)
 	}
 }
 
@@ -307,12 +310,12 @@ func (c *Cli) initCookies(uri string) {
 	}
 }
 
-func (c *Cli) post(uri string, content string) (*http.Response, error) {
+func (c *Cli) Post(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
 	return c.makeRequestWithContent("POST", uri, content)
 }
 
-func (c *Cli) put(uri string, content string) (*http.Response, error) {
+func (c *Cli) Put(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
 	return c.makeRequestWithContent("PUT", uri, content)
 }
@@ -345,7 +348,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string) 
 	}
 }
 
-func (c *Cli) get(uri string) (*http.Response, error) {
+func (c *Cli) Get(uri string) (*http.Response, error) {
 	c.initCookies(uri)
 	req, _ := http.NewRequest("GET", uri, nil)
 	log.Info("%s %s", req.Method, req.URL.String())
@@ -392,20 +395,20 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 func (c *Cli) getTemplate(name string) string {
 	if override, ok := c.Opts["template"].(string); ok {
 		if _, err := os.Stat(override); err == nil {
-			return readFile(override)
+			return util.ReadFile(override)
 		} else {
-			if file, err := FindClosestParentPath(fmt.Sprintf(".%s.d/templates/%s", c.Name, override)); err == nil {
-				return readFile(file)
+			if file, err := util.FindClosestParentPath(fmt.Sprintf(".%s.d/templates/%s", c.Name, override)); err == nil {
+				return util.ReadFile(file)
 			}
 			if dflt, ok := c.Templates[override]; ok {
 				return dflt
 			}
 		}
 	}
-	if file, err := FindClosestParentPath(fmt.Sprintf(".%s.d/templates/%s", c.Name, name)); err != nil {
+	if file, err := util.FindClosestParentPath(fmt.Sprintf(".%s.d/templates/%s", c.Name, name)); err != nil {
 		return c.Templates[name]
 	} else {
-		return readFile(file)
+		return util.ReadFile(file)
 	}
 }
 
@@ -418,7 +421,7 @@ func (f NoChangesFound) Error() string {
 func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData map[string]interface{}, templateProcessor func(string) error) error {
 
 	tmpdir := fmt.Sprintf("%s/.%s.d/tmp", os.Getenv("HOME"), c.Name)
-	if err := mkdir(tmpdir); err != nil {
+	if err := util.Mkdir(tmpdir); err != nil {
 		return err
 	}
 
@@ -438,7 +441,7 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 		os.Remove(tmpFileName)
 	}()
 
-	err = runTemplate(template, templateData, fh)
+	err = util.RunTemplate(template, templateData, fh)
 	if err != nil {
 		return err
 	}
@@ -459,7 +462,7 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 	editing := c.getOptBool("edit", true)
 
 	tmpFileNameOrig := fmt.Sprintf("%s.orig", tmpFileName)
-	copyFile(tmpFileName, tmpFileNameOrig)
+	util.CopyFile(tmpFileName, tmpFileNameOrig)
 	defer func() {
 		os.Remove(tmpFileNameOrig)
 	}()
@@ -473,7 +476,7 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 			cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
 			if err := cmd.Run(); err != nil {
 				log.Error("Failed to edit template with %s: %s", editor, err)
-				if promptYN("edit again?", true) {
+				if util.PromptYN("edit again?", true) {
 					continue
 				}
 				return err
@@ -489,21 +492,21 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 		edited := make(map[string]interface{})
 		if fh, err := ioutil.ReadFile(tmpFileName); err != nil {
 			log.Error("Failed to read tmpfile %s: %s", tmpFileName, err)
-			if editing && promptYN("edit again?", true) {
+			if editing && util.PromptYN("edit again?", true) {
 				continue
 			}
 			return err
 		} else {
 			if err := yaml.Unmarshal(fh, &edited); err != nil {
 				log.Error("Failed to parse YAML: %s", err)
-				if editing && promptYN("edit again?", true) {
+				if editing && util.PromptYN("edit again?", true) {
 					continue
 				}
 				return err
 			}
 		}
 
-		if fixed, err := yamlFixup(edited); err != nil {
+		if fixed, err := util.YamlFixup(edited); err != nil {
 			return err
 		} else {
 			edited = fixed.(map[string]interface{})
@@ -524,7 +527,7 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 					if _, ok := mf.(map[string]interface{})[k]; !ok {
 						err := fmt.Errorf("Field %s is not editable", k)
 						log.Error("%s", err)
-						if editing && promptYN("edit again?", true) {
+						if editing && util.PromptYN("edit again?", true) {
 							continue
 						}
 						return err
@@ -533,14 +536,14 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 			}
 		}
 
-		json, err := jsonEncode(edited)
+		json, err := util.JsonEncode(edited)
 		if err != nil {
 			return err
 		}
 
 		if err := templateProcessor(json); err != nil {
 			log.Error("%s", err)
-			if editing && promptYN("edit again?", true) {
+			if editing && util.PromptYN("edit again?", true) {
 				continue
 			}
 		}
@@ -550,12 +553,10 @@ func (c *Cli) editTemplate(template string, tmpFilePrefix string, templateData m
 }
 
 func (c *Cli) Browse(uri string) error {
-	if val, ok := c.Opts["browse"].(bool); ok && val {
-		if runtime.GOOS == "darwin" {
-			return exec.Command("open", uri).Run()
-		} else if runtime.GOOS == "linux" {
-			return exec.Command("xdg-open", uri).Run()
-		}
+	if runtime.GOOS == "darwin" {
+		return exec.Command("open", uri).Run()
+	} else if runtime.GOOS == "linux" {
+		return exec.Command("xdg-open", uri).Run()
 	}
 	return nil
 }
@@ -582,7 +583,7 @@ func (c *Cli) Login() error {
 
 func (c *Cli) ExportTemplates() error {
 	dir := c.Opts["directory"].(string)
-	if err := mkdir(dir); err != nil {
+	if err := util.Mkdir(dir); err != nil {
 		return err
 	}
 
