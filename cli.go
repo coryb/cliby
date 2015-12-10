@@ -43,7 +43,7 @@ func New(name string) *Cli {
 		CookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
 		UA:         &http.Client{},
 		Name:       name,
-		Opts:       map[string]interface{}{
+		Opts: map[string]interface{}{
 			"config-file": fmt.Sprintf(".%s.d/config.yml", name),
 		},
 		Commands:       make(map[string]func() error),
@@ -94,7 +94,7 @@ func (c *Cli) RunCommand(command string) error {
 }
 
 func (c *Cli) ProcessOptions() string {
-	c.Options.Results = c.Opts;
+	c.Options.Results = c.Opts
 	if err := c.Options.ProcessSome(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
@@ -103,7 +103,7 @@ func (c *Cli) ProcessOptions() string {
 }
 
 func (c *Cli) ProcessAllOptions() string {
-	c.Options.Results = c.Opts;
+	c.Options.Results = c.Opts
 	if err := c.Options.ProcessAll(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
