@@ -29,7 +29,6 @@ type Cli struct {
 	Usage          func() string
 	Commands       map[string]func() error
 	CommandAliases map[string]string
-	Defaults       map[string]interface{}
 	Opts           map[string]interface{}
 	Args           []string
 	Options        optigo.OptionParser
@@ -44,8 +43,7 @@ func New(name string) *Cli {
 		CookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
 		UA:         &http.Client{},
 		Name:       name,
-		Opts:       make(map[string]interface{}),
-		Defaults: map[string]interface{}{
+		Opts:       map[string]interface{}{
 			"config-file": fmt.Sprintf(".%s.d/config.yml", name),
 		},
 		Commands:       make(map[string]func() error),
@@ -96,6 +94,7 @@ func (c *Cli) RunCommand(command string) error {
 }
 
 func (c *Cli) ProcessOptions() string {
+	c.Options.Results = c.Opts;
 	if err := c.Options.ProcessSome(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
@@ -104,6 +103,7 @@ func (c *Cli) ProcessOptions() string {
 }
 
 func (c *Cli) ProcessAllOptions() string {
+	c.Options.Results = c.Opts;
 	if err := c.Options.ProcessAll(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
@@ -113,7 +113,6 @@ func (c *Cli) ProcessAllOptions() string {
 
 func (c *Cli) processConfigs() string {
 	c.Args = c.Options.Args
-	c.Opts = c.Options.Results
 
 	var command string
 	if len(c.Args) > 0 {
@@ -146,28 +145,6 @@ func (c *Cli) processConfigs() string {
 		command = "default"
 	}
 
-	// apply defaults
-	for k, v := range c.Defaults {
-		if opt, ok := c.Opts[k]; !ok {
-			log.Debug("Setting %q to %#v from defaults", k, v)
-			c.Opts[k] = v
-		} else {
-			// check to see if there is an empty array in the options
-			// but the default have a non-empty array
-			switch t := opt.(type) {
-			case []string:
-				if len(t) == 0 {
-					log.Debug("Setting %q to %#v from defaults", k, v)
-					c.Opts[k] = v
-				}
-			case string:
-				if t == "" {
-					log.Debug("Setting %q to %#v from defaults", k, v)
-					c.Opts[k] = v
-				}
-			}
-		}
-	}
 	return command
 }
 
@@ -214,8 +191,6 @@ func (c *Cli) loadConfigs() {
 	var configFile string
 	if val, ok := c.Opts["config-file"].(string); ok && val != "" {
 		configFile = val
-	} else {
-		configFile = c.Defaults["config-file"].(string)
 	}
 
 	paths := util.FindParentPaths(configFile)
