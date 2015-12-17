@@ -94,7 +94,6 @@ func (c *Cli) RunCommand(command string) error {
 }
 
 func (c *Cli) ProcessOptions() string {
-	c.Options.Results = c.Opts
 	if err := c.Options.ProcessSome(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
@@ -103,15 +102,21 @@ func (c *Cli) ProcessOptions() string {
 }
 
 func (c *Cli) ProcessAllOptions() string {
-	c.Options.Results = c.Opts
 	if err := c.Options.ProcessAll(os.Args[1:]); err != nil {
 		log.Error("%s", err)
 		c.PrintUsage(false)
 	}
 	return c.processConfigs()
+
 }
 
 func (c *Cli) processConfigs() string {
+	defaults := c.Opts
+	c.Opts = c.Options.Results
+	if _, ok := c.Opts["config-file"].(string); !ok {
+		c.Opts["config-file"] = defaults["config-file"]
+	}
+
 	c.Args = c.Options.Args
 
 	var command string
@@ -143,6 +148,15 @@ func (c *Cli) processConfigs() string {
 	} else if _, ok := c.Commands[command]; !ok || command == "" {
 		c.Args = append([]string{command}, c.Args...)
 		command = "default"
+	}
+
+	// for each option in defaults check to see if there
+	// is an option value alread set, if not then set it
+	// to the default
+	for opt := range defaults {
+		if _, ok := c.Options.Results[opt]; !ok {
+			c.Opts[opt] = defaults[opt]
+		}
 	}
 
 	return command
