@@ -140,7 +140,7 @@ func (c *Cli) processConfigs() string {
 	}
 
 	os.Setenv(fmt.Sprintf("%s_OPERATION", strings.ToUpper(c.Name)), command)
-	c.loadConfigs()
+	c.LoadConfigs(c.Opts["config-file"].(string))
 
 	// check to see if it was set in the configs:
 	if value, ok := c.Opts["command"].(string); ok {
@@ -200,12 +200,8 @@ func (c *Cli) populateEnv() {
 	}
 }
 
-func (c *Cli) loadConfigs() {
+func (c *Cli) LoadConfigs(configFile string) {
 	c.populateEnv()
-	var configFile string
-	if val, ok := c.Opts["config-file"].(string); ok && val != "" {
-		configFile = val
-	}
 
 	paths := util.FindParentPaths(configFile)
 	// prepend
