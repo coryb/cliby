@@ -358,7 +358,6 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 	req.Header.Set("Content-Type", "application/json")
 	if resp, err = c.UA.Do(req); err != nil {
-		log.Error("Failed to %s %s: %s", req.Method, req.URL.String(), err)
 		return nil, err
 	} else {
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
