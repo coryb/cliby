@@ -308,7 +308,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string) 
 	buffer := bytes.NewBufferString(content)
 	req, _ := http.NewRequest(method, uri, buffer)
 
-	log.Info("%s %s", req.Method, req.URL.String())
+	log.Debug("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
 		logBuffer := bytes.NewBuffer(make([]byte, 0, len(content)))
 		req.Write(logBuffer)
@@ -335,7 +335,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string) 
 func (c *Cli) Get(uri string) (*http.Response, error) {
 	c.initCookies(uri)
 	req, _ := http.NewRequest("GET", uri, nil)
-	log.Info("%s %s", req.Method, req.URL.String())
+	log.Debug("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
 		logBuffer := bytes.NewBuffer(make([]byte, 0))
 		req.Write(logBuffer)
