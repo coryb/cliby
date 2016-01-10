@@ -375,7 +375,7 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 	return resp, nil
 }
 
-func (c *Cli) getTemplate(name string) string {
+func (c *Cli) GetTemplate(name string) string {
 	if override, ok := c.Opts["template"].(string); ok {
 		if _, err := os.Stat(override); err == nil {
 			return util.ReadFile(override)
