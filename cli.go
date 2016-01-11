@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/coryb/cliby/util"
 	"github.com/coryb/optigo"
 	"github.com/kballard/go-shellquote"
 	"github.com/op/go-logging"
@@ -12,13 +13,12 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"github.com/coryb/cliby/util"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
-	"unicode"
 	"time"
+	"unicode"
 )
 
 var log = logging.MustGetLogger("cliby")
