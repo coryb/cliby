@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	// "net/url"
 	"github.com/coryb/cliby/util"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"unicode"
 	"time"
 )
 
@@ -183,6 +183,12 @@ func (c *Cli) SetEditing(dflt bool) {
 func (c *Cli) populateEnv() {
 	for k, v := range c.Opts {
 		envName := fmt.Sprintf("%s_%s", strings.ToUpper(c.Name), strings.ToUpper(k))
+		envName = strings.Map(func(r rune) rune {
+			if unicode.IsDigit(r) || unicode.IsLetter(r) {
+				return r
+			}
+			return '_'
+		}, envName)
 		var val string
 		switch t := v.(type) {
 		case string:
