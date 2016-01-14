@@ -265,10 +265,12 @@ func Prompt(prompt string) {
 	reader.ReadString('\n')
 }
 
-func ParseYaml(file string, opts map[string]interface{}) {
+func ParseYaml(file string, opts *map[string]interface{}) {
 	if fh, err := ioutil.ReadFile(file); err == nil {
 		log.Debug("Found Config file: %s", file)
-		yaml.Unmarshal(fh, &opts)
+		yaml.Unmarshal(fh, opts)
+		fixed, _ := YamlFixup(*opts)
+		*opts = fixed.(map[string]interface{})
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"reflect"
 	"runtime"
 	"strings"
 	"time"
@@ -46,6 +47,7 @@ func New(name string) *Cli {
 		Opts: map[string]interface{}{
 			"config-file": fmt.Sprintf(".%s.d/config.yml", name),
 		},
+		Options:        optigo.NewParser([]string{}),
 		Commands:       make(map[string]func() error),
 		CommandAliases: make(map[string]string),
 	}
@@ -114,7 +116,11 @@ func (c *Cli) processConfigs() string {
 	defaults := c.Opts
 	c.Opts = c.Options.Results
 	if _, ok := c.Opts["config-file"].(string); !ok {
-		c.Opts["config-file"] = defaults["config-file"]
+		if dflt, ok := defaults["config-file"].(string); ok {
+			c.Opts["config-file"] = dflt
+		} else {
+			c.Opts["config-file"] = fmt.Sprintf(".%s.d/config.yml", c.Name)
+		}
 	}
 
 	c.Args = c.Options.Args
@@ -153,9 +159,19 @@ func (c *Cli) processConfigs() string {
 	// for each option in defaults check to see if there
 	// is an option value alread set, if not then set it
 	// to the default
-	for opt := range defaults {
-		if _, ok := c.Options.Results[opt]; !ok {
-			c.Opts[opt] = defaults[opt]
+	for k, v := range defaults {
+		if val, ok := c.Options.Results[k]; !ok {
+			c.Opts[k] = defaults[k]
+		} else {
+			// merge maps and arrays (sets)
+			switch t := val.(type) {
+			case map[string]interface{}:
+				log.Debug("merging: %v with %v", t, v)
+				c.Opts[k] = mergeMaps(t, v.(map[string]interface{}))
+			case []interface{}:
+				log.Debug("merging: %v with %v", t, v)
+				c.Opts[k] = mergeArrays(t, v.([]interface{}))
+			}
 		}
 	}
 
@@ -220,7 +236,8 @@ func (c *Cli) LoadConfigs(configFile string) {
 			tmp := make(map[string]interface{})
 			// check to see if config file is exectuable
 			if stat.Mode()&0111 == 0 {
-				util.ParseYaml(file, tmp)
+				log.Debug("Loading config %s", file)
+				util.ParseYaml(file, &tmp)
 			} else {
 				log.Debug("Found Executable Config file: %s", file)
 				// it is executable, so run it and try to parse the output
@@ -235,14 +252,60 @@ func (c *Cli) LoadConfigs(configFile string) {
 				yaml.Unmarshal(stdout.Bytes(), &tmp)
 			}
 			for k, v := range tmp {
-				if _, ok := c.Opts[k]; !ok {
+				if val, ok := c.Opts[k]; !ok {
 					log.Debug("Setting %q to %#v from %s", k, v, file)
 					c.Opts[k] = v
+				} else {
+					// merge maps and arrays (sets)
+					switch t := val.(type) {
+					case map[string]interface{}:
+						log.Debug("merging: %v with %v", t, v)
+						c.Opts[k] = mergeMaps(t, v.(map[string]interface{}))
+					case []interface{}:
+						log.Debug("merging: %v with %v", t, v)
+						c.Opts[k] = mergeArrays(t, v.([]interface{}))
+					}
 				}
 			}
 			c.populateEnv()
 		}
 	}
+}
+
+func mergeMaps(orig, new map[string]interface{}) map[string]interface{} {
+	for k, v := range new {
+		if val, ok := orig[k]; !ok {
+			orig[k] = v
+		} else {
+			// merge maps and arrays (sets)
+			switch t := val.(type) {
+			case map[string]interface{}:
+				orig[k] = mergeMaps(t, v.(map[string]interface{}))
+			case []interface{}:
+				orig[k] = mergeArrays(t, v.([]interface{}))
+			}
+		}
+	}
+	return orig
+}
+
+func mergeArrays(orig, new []interface{}) []interface{} {
+Outer:
+	for _, val := range new {
+		for oi, ov := range orig {
+			if reflect.DeepEqual(val, ov) {
+				switch t := val.(type) {
+				case map[string]interface{}:
+					orig[oi] = mergeMaps(t, val.(map[string]interface{}))
+				case []interface{}:
+					orig[oi] = mergeArrays(t, val.([]interface{}))
+				}
+				continue Outer
+			}
+		}
+		orig = append(orig, val)
+	}
+	return orig
 }
 
 func (c *Cli) saveCookies(cookies []*http.Cookie) {
