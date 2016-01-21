@@ -24,6 +24,8 @@ import (
 
 var log = logging.MustGetLogger("cliby")
 
+type Exit struct{ Code int }
+
 type Cli struct {
 	CookieFile     string
 	UA             *http.Client
@@ -75,11 +77,11 @@ func (c *Cli) PrintUsage(ok bool) {
 			return fmt.Fprintf(os.Stderr, format, args...)
 		}
 		defer func() {
-			os.Exit(1)
+			panic(Exit{1})
 		}()
 	} else {
 		defer func() {
-			os.Exit(0)
+			panic(Exit{0})
 		}()
 	}
 	printer(c.Usage())
@@ -247,7 +249,7 @@ func (c *Cli) LoadConfigs(configFile string) {
 				cmd.Stderr = bytes.NewBufferString("")
 				if err := cmd.Run(); err != nil {
 					log.Error("%s is exectuable, but it failed to execute: %s\n%s", file, err, cmd.Stderr)
-					os.Exit(1)
+					panic(Exit{1})
 				}
 				yaml.Unmarshal(stdout.Bytes(), &tmp)
 			}
@@ -343,7 +345,7 @@ func (c *Cli) loadCookies() []*http.Cookie {
 	}
 	if err != nil {
 		log.Error("Failed to open %s: %s", c.CookieFile, err)
-		os.Exit(1)
+		panic(Exit{1})
 	}
 	cookies := make([]*http.Cookie, 0)
 	err = json.Unmarshal(bytes, &cookies)
