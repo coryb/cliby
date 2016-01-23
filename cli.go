@@ -432,7 +432,7 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 		return nil, err
 	} else {
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
-			log.Error("response status: %s", resp.Status)
+			log.Debug("response status: %s", resp.Status)
 		}
 
 		runtime.SetFinalizer(resp, func(r *http.Response) {
