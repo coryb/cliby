@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"github.com/op/go-logging"
 	"github.com/pmezard/go-difflib/difflib"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"reflect"
 	"testing"
 )
 
 var TestOptionMergeExpected = map[string]interface{}{
-	"config-file": ".test.d/config.yml",
 	"a":           1,
 	"b":           999,
 	"A":           1,
@@ -41,11 +41,24 @@ var TestOptionMergeExpected = map[string]interface{}{
 	},
 }
 
+type TestCli struct {
+	Cli
+}
+
+func (c *TestCli) CommandLine() *kingpin.Application {
+	return kingpin.New("test", "test app")
+}
+
+func (c *TestCli) NewOptions() interface{} {
+	return map[string]interface{}{}
+}
+
 func TestOptionMerge(t *testing.T) {
 	InitLogging()
 	logging.SetLevel(logging.DEBUG, "")
-	cli := New("test")
-	cli.Opts = map[string]interface{}{
+	cli := &TestCli{*New("test")}
+
+	cli.SetDefaults(map[string]interface{}{
 		"a": 1,
 		"b": 2,
 		"hash": map[string]interface{}{
@@ -68,11 +81,23 @@ func TestOptionMerge(t *testing.T) {
 			[]interface{}{"a", "b", "c"},
 			[]interface{}{"d", "e", "f"},
 		},
-	}
+	})
 
-	cli.ProcessOptions()
-	if !reflect.DeepEqual(cli.Opts, TestOptionMergeExpected) {
-		got, _ := json.MarshalIndent(cli.Opts, "", "    ")
+	os.Args = []string{os.Args[0]}
+	
+	ProcessAllOptions(cli)
+	log.Debug("processed: %#v", cli.GetOptions())
+	options := cli.GetOptions()
+	if !reflect.DeepEqual(options, TestOptionMergeExpected) {
+		log.Debug("processed: %#v", options)
+		got, err := json.MarshalIndent(options, "", "    ")
+		if err != nil {
+			log.Error("Failed to marshal json: %s", err)
+		}
+		log.Debug("got: %#v", string(got))
+		log.Debug("processed: %#v", options)
+		got, err = json.MarshalIndent(options, "", "    ")
+		log.Debug("got: %#v", string(got))
 		expected, _ := json.MarshalIndent(TestOptionMergeExpected, "", "    ")
 
 		diff := difflib.UnifiedDiff{
@@ -89,7 +114,6 @@ func TestOptionMerge(t *testing.T) {
 }
 
 var TestOptionMergeSubdirExpected = map[string]interface{}{
-	"config-file": ".test.d/config.yml",
 	"a":           1,
 	"b":           101,
 	"A":           1,
@@ -129,8 +153,8 @@ func TestOptionMergeSubdir(t *testing.T) {
 	os.Chdir("subdir")
 	InitLogging()
 	logging.SetLevel(logging.DEBUG, "")
-	cli := New("test")
-	cli.Opts = map[string]interface{}{
+	cli := &TestCli{*New("test")}
+	cli.SetDefaults(map[string]interface{}{
 		"a": 1,
 		"b": 2,
 		"hash": map[string]interface{}{
@@ -153,11 +177,11 @@ func TestOptionMergeSubdir(t *testing.T) {
 			[]interface{}{"a", "b", "c"},
 			[]interface{}{"d", "e", "f"},
 		},
-	}
+	})
 
-	cli.ProcessOptions()
-	if !reflect.DeepEqual(cli.Opts, TestOptionMergeSubdirExpected) {
-		got, _ := json.MarshalIndent(cli.Opts, "", "    ")
+	ProcessAllOptions(cli)
+	if !reflect.DeepEqual(cli.GetOptions(), TestOptionMergeSubdirExpected) {
+		got, _ := json.MarshalIndent(cli.GetOptions(), "", "    ")
 		expected, _ := json.MarshalIndent(TestOptionMergeSubdirExpected, "", "    ")
 
 		diff := difflib.UnifiedDiff{

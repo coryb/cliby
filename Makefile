@@ -19,6 +19,9 @@ export GOPATH=$(shell pwd)
 test: src/github.com/coryb/cliby
 	go test -v
 
+debug: src/github.com/coryb/cliby
+	cd src/github.com/coryb/cliby && go get -v github.com/mailgun/godebug && $(GOPATH)/bin/godebug test -instrument github.com/coryb/cliby,encoding/json
+
 src/%:
 	mkdir -p $(@D)
 	test -L $@ || ln -sf ../../.. $@
