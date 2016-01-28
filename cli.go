@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/coryb/cliby/util"
+	"gopkg.in/coryb/cliby.v0/util"
 	"github.com/coryb/optigo"
 	"github.com/kballard/go-shellquote"
 	"github.com/op/go-logging"
