@@ -7,6 +7,7 @@ import (
 	"github.com/coryb/cliby/util"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"github.com/op/go-logging"
+	"github.com/fatih/camelcase"
 	"gopkg.in/coryb/yaml.v2"
 	"io/ioutil"
 	"net/http"
@@ -219,6 +220,7 @@ func processConfigs(i Interface) {
 	log.Debug("Setting Config from Defaults")
 	mergeStructs(ov,dv)
 	i.SetOptions(ov.Interface())
+	populateEnv(i)
 }
 
 // func (c *Cli) SetEditing(dflt bool) {
@@ -241,9 +243,13 @@ func processConfigs(i Interface) {
 
 func populateEnv(iface Interface) {
 	options := reflect.ValueOf(iface.GetOptions())
+	if options.Kind() == reflect.Ptr {
+		options = reflect.ValueOf(options.Elem().Interface())
+	}
 	if options.Kind() == reflect.Struct {
 		for i := 0; i < options.NumField(); i++ {
-			envName := fmt.Sprintf("%s_%s", strings.ToUpper(iface.Name()), strings.ToUpper(options.Type().Field(i).Name))
+			name := strings.Join(camelcase.Split(options.Type().Field(i).Name), "_")
+			envName := fmt.Sprintf("%s_%s", strings.ToUpper(iface.Name()), strings.ToUpper(name))
 			
 			envName = strings.Map(func(r rune) rune {
 				if unicode.IsDigit(r) || unicode.IsLetter(r) {
