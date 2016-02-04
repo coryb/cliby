@@ -25,7 +25,7 @@ debug: src/github.com/coryb/cliby
 src/%:
 	mkdir -p $(@D)
 	test -L $@ || ln -sf ../../.. $@
-	go get -v $*
+	go get -v -t $*
 
 cross-setup:
 	for p in $(PLATFORMS); do \

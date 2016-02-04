@@ -11,6 +11,7 @@ import (
 	"gopkg.in/coryb/yaml.v2"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
@@ -107,6 +108,10 @@ func (c *Cli) GetHttpClient() *http.Client {
 
 func (c *Cli) SetHttpClient(client *http.Client) {
 	c.ua = client
+}
+
+func (c *Cli) SetCookieFile(file string) {
+	c.cookieFile = file
 }
 
 func (c *Cli) CommandLine() *kingpin.Application {
@@ -459,26 +464,33 @@ func (c *Cli) initCookies(uri string) {
 
 func (c *Cli) Post(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
-	return c.makeRequestWithContent("POST", uri, content)
+	return c.makeRequestWithContent("POST", uri, content, "appliation/json")
 }
 
 func (c *Cli) Put(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
-	return c.makeRequestWithContent("PUT", uri, content)
+	return c.makeRequestWithContent("PUT", uri, content, "application/json")
 }
 
-func (c *Cli) makeRequestWithContent(method string, uri string, content string) (*http.Response, error) {
+func (c *Cli) PostXML(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("POST", uri, content, "application/xml")
+}
+
+func (c *Cli) PutXML(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("PUT", uri, content, "application/xml")
+}
+
+func (c *Cli) makeRequestWithContent(method string, uri string, content string, contentType string) (*http.Response, error) {
 	buffer := bytes.NewBufferString(content)
 	req, _ := http.NewRequest(method, uri, buffer)
+	req.Header.Set("Content-Type", contentType)
 
 	log.Debug("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
-		logBuffer := bytes.NewBuffer(make([]byte, 0, len(content)))
-		req.Write(logBuffer)
-		log.Debug("%s", logBuffer)
-		// need to recreate the buffer since the offset is now at the end
-		// need to be able to rewind the buffer offset, dont know how yet
-		req, _ = http.NewRequest(method, uri, bytes.NewBufferString(content))
+		out, _ := httputil.DumpRequestOut(req, true)
+		log.Debug("%s", out)
 	}
 
 	if resp, err := c.makeRequest(req); err != nil {
@@ -498,6 +510,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string) 
 func (c *Cli) Get(uri string) (*http.Response, error) {
 	c.initCookies(uri)
 	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Content-Type", "application/json")
 	log.Debug("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
 		logBuffer := bytes.NewBuffer(make([]byte, 0))
@@ -519,7 +532,6 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 }
 
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
-	req.Header.Set("Content-Type", "application/json")
 	if resp, err = c.ua.Do(req); err != nil {
 		return nil, err
 	} else {
