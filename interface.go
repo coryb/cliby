@@ -13,7 +13,6 @@ type Interface interface {
 	GetOptions() interface{}
 	SetOptions(interface{})
 	CommandLine() *kingpin.Application
-	SetCommands(map[string] func() error)
+	SetCommands(map[string]func() error)
 	GetCommand(string) func() error
 }
-

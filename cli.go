@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/coryb/cliby/util"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"github.com/op/go-logging"
 	"github.com/fatih/camelcase"
+	"github.com/op/go-logging"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/coryb/yaml.v2"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/http/cookiejar"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"os/exec"
@@ -28,13 +28,13 @@ var log = logging.MustGetLogger("cliby")
 type Exit struct{ Code int }
 
 type Cli struct {
-	cookieFile     string
-	ua             *http.Client
-	commands       map[string]func() error
-	defaults       interface{}
-	options        interface{}
-	templates      map[string]string
-	name           string
+	cookieFile string
+	ua         *http.Client
+	commands   map[string]func() error
+	defaults   interface{}
+	options    interface{}
+	templates  map[string]string
+	name       string
 }
 
 type Options struct {
@@ -48,7 +48,7 @@ func New(name string) *Cli {
 		cookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
 		ua:         &http.Client{},
 		name:       name,
-		commands:       make(map[string]func() error),
+		commands:   make(map[string]func() error),
 	}
 
 	return cli
@@ -65,7 +65,7 @@ func (c *Cli) GetDefaults() interface{} {
 func (c *Cli) SetDefaults(val interface{}) {
 	c.defaults = val
 }
-	
+
 func (c *Cli) NewOptions() interface{} {
 	return Options{}
 }
@@ -171,7 +171,7 @@ func ProcessAllOptions(i Interface) string {
 			}
 		}
 		app.Usage([]string{command})
-		
+
 		panic(Exit{1})
 	}
 	os.Setenv(fmt.Sprintf("%s_OPERATION", strings.ToUpper(i.Name())), command)
@@ -201,7 +201,7 @@ func processConfigs(i Interface) {
 	}
 
 	var configFile string
-	Outer:
+Outer:
 	for _, name := range []string{"ConfigFile", "config-file"} {
 		for _, collection := range []interface{}{options, defaults} {
 			configFile = getKeyString(collection, name)
@@ -213,7 +213,7 @@ func processConfigs(i Interface) {
 	if configFile == "" {
 		configFile = fmt.Sprintf(".%s.d/config.yml", i.Name())
 	}
-		
+
 	i.SetOptions(options)
 
 	LoadConfigs(i, configFile)
@@ -223,7 +223,7 @@ func processConfigs(i Interface) {
 
 	log.Debug("defaults: %#v  options: %#v", defaults, i.GetOptions())
 	log.Debug("Setting Config from Defaults")
-	mergeStructs(ov,dv)
+	mergeStructs(ov, dv)
 	i.SetOptions(ov.Interface())
 	populateEnv(i)
 }
@@ -255,7 +255,7 @@ func populateEnv(iface Interface) {
 		for i := 0; i < options.NumField(); i++ {
 			name := strings.Join(camelcase.Split(options.Type().Field(i).Name), "_")
 			envName := fmt.Sprintf("%s_%s", strings.ToUpper(iface.Name()), strings.ToUpper(name))
-			
+
 			envName = strings.Map(func(r rune) rune {
 				if unicode.IsDigit(r) || unicode.IsLetter(r) {
 					return r
@@ -318,9 +318,8 @@ func LoadConfigs(iface Interface, configFile string) {
 			nv := reflect.ValueOf(tmp)
 			ov := reflect.ValueOf(iface.GetOptions())
 
-			
 			log.Debug("Setting Config from %s", file)
-			mergeStructs(ov,nv)
+			mergeStructs(ov, nv)
 			iface.SetOptions(ov.Interface())
 			populateEnv(iface)
 		}
@@ -328,10 +327,10 @@ func LoadConfigs(iface Interface, configFile string) {
 }
 
 func mergeStructs(ov, nv reflect.Value) {
-	if ( ov.Kind() == reflect.Ptr ) {
+	if ov.Kind() == reflect.Ptr {
 		ov = ov.Elem()
 	}
-	if ( nv.Kind() == reflect.Ptr ) {
+	if nv.Kind() == reflect.Ptr {
 		nv = nv.Elem()
 	}
 	if ov.Kind() == reflect.Map && nv.Kind() == reflect.Map {
@@ -725,7 +724,7 @@ func getKeyString(data interface{}, key string) string {
 		return ""
 	}
 	if val.Kind() == reflect.Ptr {
-		val = reflect.ValueOf(val.Elem().Interface()) 
+		val = reflect.ValueOf(val.Elem().Interface())
 	}
 	var result reflect.Value
 	log.Debug("looking up %s in %s %#v", key, val.Kind(), data)

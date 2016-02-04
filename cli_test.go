@@ -11,9 +11,9 @@ import (
 )
 
 var TestOptionMergeExpected = map[string]interface{}{
-	"a":           1,
-	"b":           999,
-	"A":           1,
+	"a": 1,
+	"b": 999,
+	"A": 1,
 	"hash": map[string]interface{}{
 		"a": 1,
 		"b": 999,
@@ -84,7 +84,7 @@ func TestOptionMerge(t *testing.T) {
 	})
 
 	os.Args = []string{os.Args[0]}
-	
+
 	ProcessAllOptions(cli)
 	log.Debug("processed: %#v", cli.GetOptions())
 	options := cli.GetOptions()
@@ -114,10 +114,10 @@ func TestOptionMerge(t *testing.T) {
 }
 
 var TestOptionMergeSubdirExpected = map[string]interface{}{
-	"a":           1,
-	"b":           101,
-	"A":           1,
-	"C":           1,
+	"a": 1,
+	"b": 101,
+	"A": 1,
+	"C": 1,
 	"hash": map[string]interface{}{
 		"a": 1,
 		"b": 101,
