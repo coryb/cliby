@@ -258,11 +258,12 @@ func PromptYN(prompt string, yes bool) bool {
 	return false
 }
 
-func Prompt(prompt string) {
+func Prompt(prompt string) string {
 	reader := bufio.NewReader(os.Stdin)
-	prompt = fmt.Sprintf("%s [ENTER]", prompt)
+	prompt = fmt.Sprintf("%s: ", prompt)
 	fmt.Printf("%s", prompt)
-	reader.ReadString('\n')
+	out, _ := reader.ReadString('\n')
+	return strings.TrimSpace(out)
 }
 
 func ParseYaml(file string, opts *map[string]interface{}) {
