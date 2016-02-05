@@ -463,7 +463,7 @@ func (c *Cli) initCookies(uri string) {
 
 func (c *Cli) Post(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
-	return c.makeRequestWithContent("POST", uri, content, "appliation/json")
+	return c.makeRequestWithContent("POST", uri, content, "application/json")
 }
 
 func (c *Cli) Put(uri string, content string) (*http.Response, error) {
@@ -508,7 +508,11 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
 	c.initCookies(uri)
-	req, _ := http.NewRequest("GET", uri, nil)
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		log.Error("Invalid Request: %s", uri)
+		return nil, err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	log.Debug("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
