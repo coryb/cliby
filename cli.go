@@ -223,7 +223,7 @@ Outer:
 
 	log.Debug("defaults: %#v  options: %#v", defaults, i.GetOptions())
 	log.Debug("Setting Config from Defaults")
-	mergeStructs(ov, dv)
+	MergeStructs(ov, dv)
 	i.SetOptions(ov.Interface())
 	populateEnv(i)
 }
@@ -319,14 +319,14 @@ func LoadConfigs(iface Interface, configFile string) {
 			ov := reflect.ValueOf(iface.GetOptions())
 
 			log.Debug("Setting Config from %s", file)
-			mergeStructs(ov, nv)
+			MergeStructs(ov, nv)
 			iface.SetOptions(ov.Interface())
 			populateEnv(iface)
 		}
 	}
 }
 
-func mergeStructs(ov, nv reflect.Value) {
+func MergeStructs(ov, nv reflect.Value) {
 	if ov.Kind() == reflect.Ptr {
 		ov = ov.Elem()
 	}
@@ -334,7 +334,7 @@ func mergeStructs(ov, nv reflect.Value) {
 		nv = nv.Elem()
 	}
 	if ov.Kind() == reflect.Map && nv.Kind() == reflect.Map {
-		mergeMaps(ov, nv)
+		MergeMaps(ov, nv)
 		return
 	}
 	if !ov.IsValid() || !nv.IsValid() {
@@ -348,7 +348,7 @@ func mergeStructs(ov, nv reflect.Value) {
 			switch ov.Field(i).Kind() {
 			case reflect.Map:
 				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-				mergeMaps(ov.Field(i), nv.Field(i))
+				MergeMaps(ov.Field(i), nv.Field(i))
 			case reflect.Slice:
 				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
 				if ov.Field(i).CanSet() {
@@ -356,18 +356,18 @@ func mergeStructs(ov, nv reflect.Value) {
 						ov.Field(i).Set(nv.Field(i))
 					} else {
 						log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-						ov.Field(i).Set(mergeArrays(ov.Field(i), nv.Field(i)))
+						ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
 					}
 				}
 			case reflect.Array:
 				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-				ov.Field(i).Set(mergeArrays(ov.Field(i), nv.Field(i)))
+				ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
 			}
 		}
 	}
 }
 
-func mergeMaps(ov, nv reflect.Value) {
+func MergeMaps(ov, nv reflect.Value) {
 	for _, key := range nv.MapKeys() {
 		if !ov.MapIndex(key).IsValid() {
 			log.Debug("Setting %v to %#v", key.Interface(), nv.MapIndex(key).Interface())
@@ -378,19 +378,19 @@ func mergeMaps(ov, nv reflect.Value) {
 			switch ovi.Kind() {
 			case reflect.Map:
 				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
-				mergeMaps(ovi, nvi)
+				MergeMaps(ovi, nvi)
 			case reflect.Slice:
 				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
-				ov.SetMapIndex(key, mergeArrays(ovi, nvi))
+				ov.SetMapIndex(key, MergeArrays(ovi, nvi))
 			case reflect.Array:
 				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
-				ov.SetMapIndex(key, mergeArrays(ovi, nvi))
+				ov.SetMapIndex(key, MergeArrays(ovi, nvi))
 			}
 		}
 	}
 }
 
-func mergeArrays(ov, nv reflect.Value) reflect.Value {
+func MergeArrays(ov, nv reflect.Value) reflect.Value {
 Outer:
 	for ni := 0; ni < nv.Len(); ni++ {
 		niv := nv.Index(ni)
