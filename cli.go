@@ -341,27 +341,34 @@ func MergeStructs(ov, nv reflect.Value) {
 		return
 	}
 	for i := 0; i < nv.NumField(); i++ {
-		if reflect.DeepEqual(ov.Field(i).Interface(), reflect.Zero(ov.Field(i).Type()).Interface()) {
+		if reflect.DeepEqual(ov.Field(i).Interface(), reflect.Zero(ov.Field(i).Type()).Interface()) && !reflect.DeepEqual(ov.Field(i).Interface(), nv.Field(i).Interface()) {
 			log.Debug("Setting %s to %#v", nv.Type().Field(i).Name, nv.Field(i).Interface())
 			ov.Field(i).Set(nv.Field(i))
 		} else {
 			switch ov.Field(i).Kind() {
 			case reflect.Map:
-				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-				MergeMaps(ov.Field(i), nv.Field(i))
+				if nv.Field(i).Len() > 0 {
+					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					MergeMaps(ov.Field(i), nv.Field(i))
+				}
 			case reflect.Slice:
-				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-				if ov.Field(i).CanSet() {
-					if ov.Field(i).Len() == 0 {
-						ov.Field(i).Set(nv.Field(i))
-					} else {
-						log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-						ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
+				if nv.Field(i).Len() > 0 {
+					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					if ov.Field(i).CanSet() {
+						if ov.Field(i).Len() == 0 {
+							ov.Field(i).Set(nv.Field(i))
+						} else {
+							log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+							ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
+						}
 					}
+
 				}
 			case reflect.Array:
-				log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
-				ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
+				if nv.Field(i).Len() > 0 {
+					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
+				}
 			}
 		}
 	}
