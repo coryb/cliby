@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/coryb/cliby/util"
 	"github.com/fatih/camelcase"
-	"github.com/op/go-logging"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/coryb/yaml.v2"
+	"gopkg.in/op/go-logging.v1"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
@@ -115,7 +115,7 @@ func (c *Cli) SetCookieFile(file string) {
 }
 
 func (c *Cli) CommandLine() *kingpin.Application {
-	log.Error("CommandLine not implemented")
+	log.Errorf("CommandLine not implemented")
 	panic(Exit{1})
 }
 
@@ -161,7 +161,7 @@ func ProcessAllOptions(i Interface) string {
 	})
 	command, err := app.Parse(os.Args[1:])
 	if err != nil {
-		log.Error("%s", err)
+		log.Errorf("%s", err)
 		if command == "" {
 			for _, arg := range os.Args[1:] {
 				if arg[0] != '-' {
@@ -183,7 +183,7 @@ func ProcessAllOptions(i Interface) string {
 
 // func (c *Cli) ProcessAllOptions() string {
 // 	if err := c.Options.ProcessAll(os.Args[1:]); err != nil {
-// 		log.Error("%s", err)
+// 		log.Errorf("%s", err)
 // 		c.PrintUsage(false)
 // 	}
 // 	return c.processConfigs()
@@ -221,26 +221,26 @@ Outer:
 	dv := reflect.ValueOf(defaults)
 	ov := reflect.ValueOf(options)
 
-	log.Debug("defaults: %#v  options: %#v", defaults, i.GetOptions())
-	log.Debug("Setting Config from Defaults")
+	log.Debugf("defaults: %#v  options: %#v", defaults, i.GetOptions())
+	log.Debugf("Setting Config from Defaults")
 	MergeStructs(ov, dv)
 	i.SetOptions(ov.Interface())
 	populateEnv(i)
 }
 
 // func (c *Cli) SetEditing(dflt bool) {
-// 	log.Debug("Default Editing: %t", dflt)
+// 	log.Debugf("Default Editing: %t", dflt)
 // 	if dflt {
 // 		if val, ok := c.Opts["noedit"].(bool); ok && val {
-// 			log.Debug("Setting edit = false")
+// 			log.Debugf("Setting edit = false")
 // 			c.Opts["edit"] = false
 // 		} else {
-// 			log.Debug("Setting edit = true")
+// 			log.Debugf("Setting edit = true")
 // 			c.Opts["edit"] = true
 // 		}
 // 	} else {
 // 		if _, ok := c.Opts["edit"].(bool); !ok {
-// 			log.Debug("Setting edit = %t", dflt)
+// 			log.Debugf("Setting edit = %t", dflt)
 // 			c.Opts["edit"] = dflt
 // 		}
 // 	}
@@ -294,7 +294,7 @@ func LoadConfigs(iface Interface, configFile string) {
 			tmp := iface.NewOptions()
 			// check to see if config file is exectuable
 			if stat.Mode()&0111 == 0 {
-				log.Debug("Loading config %s", file)
+				log.Debugf("Loading config %s", file)
 				if fh, err := ioutil.ReadFile(file); err == nil {
 					yaml.Unmarshal(fh, tmp)
 					if reflect.ValueOf(tmp).Kind() == reflect.Map {
@@ -302,14 +302,14 @@ func LoadConfigs(iface Interface, configFile string) {
 					}
 				}
 			} else {
-				log.Debug("Found Executable Config file: %s", file)
+				log.Debugf("Found Executable Config file: %s", file)
 				// it is executable, so run it and try to parse the output
 				cmd := exec.Command(file)
 				stdout := bytes.NewBufferString("")
 				cmd.Stdout = stdout
 				cmd.Stderr = bytes.NewBufferString("")
 				if err := cmd.Run(); err != nil {
-					log.Error("%s is exectuable, but it failed to execute: %s\n%s", file, err, cmd.Stderr)
+					log.Errorf("%s is exectuable, but it failed to execute: %s\n%s", file, err, cmd.Stderr)
 					panic(Exit{1})
 				}
 				yaml.Unmarshal(stdout.Bytes(), &tmp)
@@ -318,7 +318,7 @@ func LoadConfigs(iface Interface, configFile string) {
 			nv := reflect.ValueOf(tmp)
 			ov := reflect.ValueOf(iface.GetOptions())
 
-			log.Debug("Setting Config from %s", file)
+			log.Debugf("Setting Config from %s", file)
 			MergeStructs(ov, nv)
 			iface.SetOptions(ov.Interface())
 			populateEnv(iface)
@@ -342,23 +342,23 @@ func MergeStructs(ov, nv reflect.Value) {
 	}
 	for i := 0; i < nv.NumField(); i++ {
 		if reflect.DeepEqual(ov.Field(i).Interface(), reflect.Zero(ov.Field(i).Type()).Interface()) && !reflect.DeepEqual(ov.Field(i).Interface(), nv.Field(i).Interface()) {
-			log.Debug("Setting %s to %#v", nv.Type().Field(i).Name, nv.Field(i).Interface())
+			log.Debugf("Setting %s to %#v", nv.Type().Field(i).Name, nv.Field(i).Interface())
 			ov.Field(i).Set(nv.Field(i))
 		} else {
 			switch ov.Field(i).Kind() {
 			case reflect.Map:
 				if nv.Field(i).Len() > 0 {
-					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					log.Debugf("merging: %v with %v", ov.Field(i), nv.Field(i))
 					MergeMaps(ov.Field(i), nv.Field(i))
 				}
 			case reflect.Slice:
 				if nv.Field(i).Len() > 0 {
-					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					log.Debugf("merging: %v with %v", ov.Field(i), nv.Field(i))
 					if ov.Field(i).CanSet() {
 						if ov.Field(i).Len() == 0 {
 							ov.Field(i).Set(nv.Field(i))
 						} else {
-							log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+							log.Debugf("merging: %v with %v", ov.Field(i), nv.Field(i))
 							ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
 						}
 					}
@@ -366,7 +366,7 @@ func MergeStructs(ov, nv reflect.Value) {
 				}
 			case reflect.Array:
 				if nv.Field(i).Len() > 0 {
-					log.Debug("merging: %v with %v", ov.Field(i), nv.Field(i))
+					log.Debugf("merging: %v with %v", ov.Field(i), nv.Field(i))
 					ov.Field(i).Set(MergeArrays(ov.Field(i), nv.Field(i)))
 				}
 			}
@@ -377,20 +377,20 @@ func MergeStructs(ov, nv reflect.Value) {
 func MergeMaps(ov, nv reflect.Value) {
 	for _, key := range nv.MapKeys() {
 		if !ov.MapIndex(key).IsValid() {
-			log.Debug("Setting %v to %#v", key.Interface(), nv.MapIndex(key).Interface())
+			log.Debugf("Setting %v to %#v", key.Interface(), nv.MapIndex(key).Interface())
 			ov.SetMapIndex(key, nv.MapIndex(key))
 		} else {
 			ovi := reflect.ValueOf(ov.MapIndex(key).Interface())
 			nvi := reflect.ValueOf(nv.MapIndex(key).Interface())
 			switch ovi.Kind() {
 			case reflect.Map:
-				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
+				log.Debugf("merging: %v with %v", ovi.Interface(), nvi.Interface())
 				MergeMaps(ovi, nvi)
 			case reflect.Slice:
-				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
+				log.Debugf("merging: %v with %v", ovi.Interface(), nvi.Interface())
 				ov.SetMapIndex(key, MergeArrays(ovi, nvi))
 			case reflect.Array:
-				log.Debug("merging: %v with %v", ovi.Interface(), nvi.Interface())
+				log.Debugf("merging: %v with %v", ovi.Interface(), nvi.Interface())
 				ov.SetMapIndex(key, MergeArrays(ovi, nvi))
 			}
 		}
@@ -407,7 +407,7 @@ Outer:
 				continue Outer
 			}
 		}
-		log.Debug("appending %v to %v", niv.Interface(), ov)
+		log.Debugf("appending %v to %v", niv.Interface(), ov)
 		ov = reflect.Append(ov, niv)
 	}
 	return ov
@@ -447,15 +447,15 @@ func (c *Cli) loadCookies() []*http.Cookie {
 		return nil
 	}
 	if err != nil {
-		log.Error("Failed to open %s: %s", c.cookieFile, err)
+		log.Errorf("Failed to open %s: %s", c.cookieFile, err)
 		panic(Exit{1})
 	}
 	cookies := make([]*http.Cookie, 0)
 	err = json.Unmarshal(bytes, &cookies)
 	if err != nil {
-		log.Error("Failed to parse json from file %s: %s", c.cookieFile, err)
+		log.Errorf("Failed to parse json from file %s: %s", c.cookieFile, err)
 	}
-	log.Debug("Loading Cookies: %s", cookies)
+	log.Debugf("Loading Cookies: %s", cookies)
 	return cookies
 }
 
@@ -493,10 +493,10 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 	req, _ := http.NewRequest(method, uri, buffer)
 	req.Header.Set("Content-Type", contentType)
 
-	log.Debug("%s %s", req.Method, req.URL.String())
+	log.Debugf("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
 		out, _ := httputil.DumpRequestOut(req, true)
-		log.Debug("%s", out)
+		log.Debugf("%s", out)
 	}
 
 	if resp, err := c.makeRequest(req); err != nil {
@@ -517,15 +517,15 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 	c.initCookies(uri)
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
-		log.Error("Invalid Request: %s", uri)
+		log.Errorf("Invalid Request: %s", uri)
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	log.Debug("%s %s", req.Method, req.URL.String())
+	log.Debugf("%s %s", req.Method, req.URL.String())
 	if log.IsEnabledFor(logging.DEBUG) {
 		logBuffer := bytes.NewBuffer(make([]byte, 0))
 		req.Write(logBuffer)
-		log.Debug("%s", logBuffer)
+		log.Debugf("%s", logBuffer)
 	}
 
 	if resp, err := c.makeRequest(req); err != nil {
@@ -546,7 +546,7 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 		return nil, err
 	} else {
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
-			log.Debug("response status: %s", resp.Status)
+			log.Debugf("response status: %s", resp.Status)
 		}
 
 		runtime.SetFinalizer(resp, func(r *http.Response) {
@@ -595,14 +595,14 @@ func (f NoChangesFound) Error() string {
 
 // 	fh, err := ioutil.TempFile(tmpdir, tmpFilePrefix)
 // 	if err != nil {
-// 		log.Error("Failed to make temp file in %s: %s", tmpdir, err)
+// 		log.Errorf("Failed to make temp file in %s: %s", tmpdir, err)
 // 		return err
 // 	}
 // 	defer fh.Close()
 
 // 	tmpFileName := fmt.Sprintf("%s.yml", fh.Name())
 // 	if err := os.Rename(fh.Name(), tmpFileName); err != nil {
-// 		log.Error("Failed to rename %s to %s: %s", fh.Name(), fmt.Sprintf("%s.yml", fh.Name()), err)
+// 		log.Errorf("Failed to rename %s to %s: %s", fh.Name(), fmt.Sprintf("%s.yml", fh.Name()), err)
 // 		return err
 // 	}
 // 	defer func() {
@@ -639,11 +639,11 @@ func (f NoChangesFound) Error() string {
 // 		if editing {
 // 			shell, _ := shellquote.Split(editor)
 // 			shell = append(shell, tmpFileName)
-// 			log.Debug("Running: %#v", shell)
+// 			log.Debugf("Running: %#v", shell)
 // 			cmd := exec.Command(shell[0], shell[1:]...)
 // 			cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
 // 			if err := cmd.Run(); err != nil {
-// 				log.Error("Failed to edit template with %s: %s", editor, err)
+// 				log.Errorf("Failed to edit template with %s: %s", editor, err)
 // 				if util.PromptYN("edit again?", true) {
 // 					continue
 // 				}
@@ -659,14 +659,14 @@ func (f NoChangesFound) Error() string {
 
 // 		edited := make(map[string]interface{})
 // 		if fh, err := ioutil.ReadFile(tmpFileName); err != nil {
-// 			log.Error("Failed to read tmpfile %s: %s", tmpFileName, err)
+// 			log.Errorf("Failed to read tmpfile %s: %s", tmpFileName, err)
 // 			if editing && util.PromptYN("edit again?", true) {
 // 				continue
 // 			}
 // 			return err
 // 		} else {
 // 			if err := yaml.Unmarshal(fh, &edited); err != nil {
-// 				log.Error("Failed to parse YAML: %s", err)
+// 				log.Errorf("Failed to parse YAML: %s", err)
 // 				if editing && util.PromptYN("edit again?", true) {
 // 					continue
 // 				}
@@ -684,7 +684,7 @@ func (f NoChangesFound) Error() string {
 // 		// you can add the "abort: true" flag to the document
 // 		// and we will abort now
 // 		if val, ok := edited["abort"].(bool); ok && val {
-// 			log.Info("abort flag found in template, quiting")
+// 			log.Infof("abort flag found in template, quiting")
 // 			return fmt.Errorf("abort flag found in template, quiting")
 // 		}
 
@@ -694,7 +694,7 @@ func (f NoChangesFound) Error() string {
 // 				for k := range f {
 // 					if _, ok := mf.(map[string]interface{})[k]; !ok {
 // 						err := fmt.Errorf("Field %s is not editable", k)
-// 						log.Error("%s", err)
+// 						log.Errorf("%s", err)
 // 						if editing && util.PromptYN("edit again?", true) {
 // 							continue
 // 						}
@@ -710,7 +710,7 @@ func (f NoChangesFound) Error() string {
 // 		}
 
 // 		if err := templateProcessor(json); err != nil {
-// 			log.Error("%s", err)
+// 			log.Errorf("%s", err)
 // 			if editing && util.PromptYN("edit again?", true) {
 // 				continue
 // 			}
@@ -738,10 +738,10 @@ func getKeyString(data interface{}, key string) string {
 		val = reflect.ValueOf(val.Elem().Interface())
 	}
 	var result reflect.Value
-	log.Debug("looking up %s in %s %#v", key, val.Kind(), data)
+	log.Debugf("looking up %s in %s %#v", key, val.Kind(), data)
 	switch val.Kind() {
 	// case reflect.Ptr:
-	// 	log.Debug("looking up %s in %s %#v", key, val.Elem().Kind(), data)
+	// 	log.Debugf("looking up %s in %s %#v", key, val.Elem().Kind(), data)
 	// 	if val.Elem().Kind() == reflect.Ptr {
 	// 		return ""
 	// 	}
@@ -754,9 +754,9 @@ func getKeyString(data interface{}, key string) string {
 		return ""
 	}
 	if result.IsValid() {
-		log.Debug("lookup of %s in %v, found %v (%s)", key, data, result.Interface(), result.Kind())
+		log.Debugf("lookup of %s in %v, found %v (%s)", key, data, result.Interface(), result.Kind())
 		if val, ok := result.Interface().(string); ok {
-			log.Debug("returning %s", val)
+			log.Debugf("returning %s", val)
 			return val
 		}
 	}
@@ -771,14 +771,14 @@ func setKeyString(data interface{}, key string, value interface{}) {
 	if val.Kind() == reflect.Ptr {
 		val = reflect.ValueOf(val.Elem().Interface())
 	}
-	log.Debug("Setting %s in %#v to %#v", key, val.Interface(), value)
+	log.Debugf("Setting %s in %#v to %#v", key, val.Interface(), value)
 	var result reflect.Value
-	// log.Debug("type: %s", val.Kind())
-	// log.Debug("type: %s", reflect.TypeOf(val.Interface()).Kind())
+	// log.Debugf("type: %s", val.Kind())
+	// log.Debugf("type: %s", reflect.TypeOf(val.Interface()).Kind())
 	switch val.Kind() {
 	case reflect.Map:
 		keyValue := reflect.ValueOf(key)
-		log.Debug("Setting map index %s to %#v", keyValue.Interface(), value)
+		log.Debugf("Setting map index %s to %#v", keyValue.Interface(), value)
 		val.SetMapIndex(keyValue, reflect.ValueOf(value))
 	case reflect.Struct:
 		result = val.FieldByName(key)
@@ -786,7 +786,7 @@ func setKeyString(data interface{}, key string, value interface{}) {
 			result.Set(reflect.ValueOf(value))
 		}
 	}
-	log.Debug("New val: %#v", val.Interface())
+	log.Debugf("New val: %#v", val.Interface())
 }
 
 func (c *Cli) Login() error {
@@ -809,11 +809,11 @@ func (c *Cli) Login() error {
 // 			continue
 // 		}
 // 		if fh, err := os.OpenFile(templateFile, os.O_WRONLY|os.O_CREATE, 0644); err != nil {
-// 			log.Error("Failed to open %s for writing: %s", templateFile, err)
+// 			log.Errorf("Failed to open %s for writing: %s", templateFile, err)
 // 			return err
 // 		} else {
 // 			defer fh.Close()
-// 			log.Notice("Creating %s", templateFile)
+// 			log.Noticef("Creating %s", templateFile)
 // 			fh.Write([]byte(template))
 // 		}
 // 	}

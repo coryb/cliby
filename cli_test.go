@@ -2,9 +2,9 @@ package cliby
 
 import (
 	"encoding/json"
-	"github.com/op/go-logging"
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/op/go-logging.v1"
 	"os"
 	"reflect"
 	"testing"
@@ -86,18 +86,18 @@ func TestOptionMerge(t *testing.T) {
 	os.Args = []string{os.Args[0]}
 
 	ProcessAllOptions(cli)
-	log.Debug("processed: %#v", cli.GetOptions())
+	log.Debugf("processed: %#v", cli.GetOptions())
 	options := cli.GetOptions()
 	if !reflect.DeepEqual(options, TestOptionMergeExpected) {
-		log.Debug("processed: %#v", options)
+		log.Debugf("processed: %#v", options)
 		got, err := json.MarshalIndent(options, "", "    ")
 		if err != nil {
-			log.Error("Failed to marshal json: %s", err)
+			log.Errorf("Failed to marshal json: %s", err)
 		}
-		log.Debug("got: %#v", string(got))
-		log.Debug("processed: %#v", options)
+		log.Debugf("got: %#v", string(got))
+		log.Debugf("processed: %#v", options)
 		got, err = json.MarshalIndent(options, "", "    ")
-		log.Debug("got: %#v", string(got))
+		log.Debugf("got: %#v", string(got))
 		expected, _ := json.MarshalIndent(TestOptionMergeExpected, "", "    ")
 
 		diff := difflib.UnifiedDiff{
@@ -108,7 +108,7 @@ func TestOptionMerge(t *testing.T) {
 			Context:  3,
 		}
 		result, _ := difflib.GetUnifiedDiffString(diff)
-		log.Error("Diff:\n%s", result)
+		log.Errorf("Diff:\n%s", result)
 		t.Fail()
 	}
 }
@@ -192,7 +192,7 @@ func TestOptionMergeSubdir(t *testing.T) {
 			Context:  3,
 		}
 		result, _ := difflib.GetUnifiedDiffString(diff)
-		log.Error("Diff:\n%s", result)
+		log.Errorf("Diff:\n%s", result)
 		t.Fail()
 	}
 }
