@@ -478,6 +478,11 @@ func (c *Cli) Put(uri string, content string) (*http.Response, error) {
 	return c.makeRequestWithContent("PUT", uri, content, "application/json")
 }
 
+func (c *Cli) Delete(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("DELETE", uri, content, "application/json")
+}
+
 func (c *Cli) PostXML(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
 	return c.makeRequestWithContent("POST", uri, content, "application/xml")
