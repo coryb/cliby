@@ -82,6 +82,10 @@ func (c *Cli) SetCommands(commands map[string]func() error) {
 	c.commands = commands
 }
 
+func (c *Cli) GetCommands() map[string]func() error {
+	return c.commands
+}
+
 func (c *Cli) GetCommand(command string) func() error {
 	if fn, ok := c.commands[command]; !ok {
 		return nil
