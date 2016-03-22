@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"github.com/coryb/cliby/util"
 )
 
 var TestOptionMergeExpected = map[string]interface{}{
@@ -195,4 +196,11 @@ func TestOptionMergeSubdir(t *testing.T) {
 		log.Errorf("Diff:\n%s", result)
 		t.Fail()
 	}
+}
+
+func TestPromptWithDefault(t *testing.T) {
+	expectDefault := util.PromptWithDefault("foo","bar")
+	if expectDefault != "bar" {
+		t.Fail()
+		}
 }
