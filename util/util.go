@@ -266,6 +266,18 @@ func Prompt(prompt string) string {
 	return strings.TrimSpace(out)
 }
 
+func PromptWithDefault(prompt string, defaultValue string) string {
+	reader := bufio.NewReader(os.Stdin)
+	prompt = fmt.Sprintf("%s [%s]: ", prompt, defaultValue)
+	fmt.Printf("%s", prompt)
+	out, _ := reader.ReadString('\n')
+	if len(strings.TrimSpace(out)) == 0 {
+		return defaultValue
+	} else {
+		return strings.TrimSpace(out)
+	}
+}
+
 func ParseYaml(file string, opts *map[string]interface{}) {
 	if fh, err := ioutil.ReadFile(file); err == nil {
 		log.Debug("Found Config file: %s", file)
