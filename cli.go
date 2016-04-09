@@ -300,7 +300,11 @@ func LoadConfigs(iface Interface, configFile string) {
 			if stat.Mode()&0111 == 0 {
 				log.Debugf("Loading config %s", file)
 				if fh, err := ioutil.ReadFile(file); err == nil {
-					yaml.Unmarshal(fh, tmp)
+					err := yaml.Unmarshal(fh, tmp)
+					if err != nil {
+						log.Errorf("Unable to parse %s: %s", file, err)
+						panic(Exit{1})
+					}
 					if reflect.ValueOf(tmp).Kind() == reflect.Map {
 						tmp, _ = util.YamlFixup(tmp)
 					}
@@ -316,7 +320,11 @@ func LoadConfigs(iface Interface, configFile string) {
 					log.Errorf("%s is exectuable, but it failed to execute: %s\n%s", file, err, cmd.Stderr)
 					panic(Exit{1})
 				}
-				yaml.Unmarshal(stdout.Bytes(), &tmp)
+				err := yaml.Unmarshal(stdout.Bytes(), tmp)
+				if err != nil {
+					log.Errorf("Failed to parse STDOUT from executable config file %s: %s", file, err)
+					panic(Exit{1})
+				}
 			}
 
 			nv := reflect.ValueOf(tmp)
