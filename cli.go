@@ -435,11 +435,11 @@ func (c *Cli) saveCookies(cookies []*http.Cookie) {
 	if currentCookies := c.loadCookies(); currentCookies != nil {
 		currentCookiesByName := make(map[string]*http.Cookie)
 		for _, cookie := range currentCookies {
-			currentCookiesByName[cookie.Name] = cookie
+			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
 		}
 
 		for _, cookie := range cookies {
-			currentCookiesByName[cookie.Name] = cookie
+			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
 		}
 
 		mergedCookies := make([]*http.Cookie, 0, len(currentCookiesByName))
@@ -472,11 +472,14 @@ func (c *Cli) loadCookies() []*http.Cookie {
 }
 
 func (c *Cli) initCookies(uri string) {
+	url, _ := url.Parse(uri)
 	if c.ua.Jar == nil {
-		url, _ := url.Parse(uri)
 		jar, _ := cookiejar.New(nil)
 		c.ua.Jar = jar
 		c.ua.Jar.SetCookies(url, c.loadCookies())
+	}
+	for _, cookie := range c.ua.Jar.Cookies(url) {
+		log.Debugf("Using Cookie: %s", cookie)
 	}
 }
 
@@ -505,6 +508,11 @@ func (c *Cli) PutXML(uri string, content string) (*http.Response, error) {
 	return c.makeRequestWithContent("PUT", uri, content, "application/xml")
 }
 
+func (c *Cli) PostForm(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("POST", uri, content, "application/x-www-form-urlencoded")
+}
+
 func (c *Cli) makeRequestWithContent(method string, uri string, content string, contentType string) (*http.Response, error) {
 	buffer := bytes.NewBufferString(content)
 	req, _ := http.NewRequest(method, uri, buffer)
@@ -516,18 +524,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 		log.Debugf("%s", out)
 	}
 
-	if resp, err := c.makeRequest(req); err != nil {
-		return nil, err
-	} else {
-		if resp.StatusCode == 401 {
-			if err := c.Login(); err != nil {
-				return nil, err
-			}
-			req, _ = http.NewRequest(method, uri, bytes.NewBufferString(content))
-			return c.makeRequest(req)
-		}
-		return resp, err
-	}
+	return c.makeRequest(req);
 }
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
@@ -545,23 +542,11 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 		log.Debugf("%s", logBuffer)
 	}
 
-	if resp, err := c.makeRequest(req); err != nil {
-		return nil, err
-	} else {
-		if resp.StatusCode == 401 {
-			if err := c.Login(); err != nil {
-				return nil, err
-			}
-			return c.makeRequest(req)
-		}
-		return resp, err
-	}
+	return c.makeRequest(req)
 }
 
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
-	if resp, err = c.ua.Do(req); err != nil {
-		return nil, err
-	} else {
+	if resp, err = c.ua.Do(req); resp != nil {
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
 			log.Debugf("response status: %s", resp.Status)
 		}
@@ -571,8 +556,18 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 		})
 
 		if _, ok := resp.Header["Set-Cookie"]; ok {
-			c.saveCookies(resp.Cookies())
+			cookies := resp.Cookies()
+			for _, cookie := range cookies {
+				if cookie.Domain == "" {
+					log.Debug("Setting DOMAIN to %s for Cookie: %s", req.URL.Host, cookie)
+					cookie.Domain = req.URL.Host
+				}
+			}
+			c.saveCookies(cookies)
 		}
+		return resp, err
+	} else {
+		return nil, err
 	}
 	return resp, nil
 }
@@ -804,10 +799,6 @@ func setKeyString(data interface{}, key string, value interface{}) {
 		}
 	}
 	log.Debugf("New val: %#v", val.Interface())
-}
-
-func (c *Cli) Login() error {
-	return fmt.Errorf("Login not implemented")
 }
 
 // func (c *Cli) ExportTemplates() error {
