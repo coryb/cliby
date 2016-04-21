@@ -175,6 +175,12 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		"age": func(content string) (string, error) {
 			return FuzzyAge(content)
 		},
+		"toUpper": func(content string) (string) {
+			return strings.ToUpper(content)
+		},
+		"toLower": func(content string) (string) {
+			return strings.ToLower(content)
+		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
 		log.Error("Failed to parse template: %s", err)
