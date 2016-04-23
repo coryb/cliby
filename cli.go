@@ -425,7 +425,19 @@ Outer:
 	return ov
 }
 
-func (c *Cli) saveCookies(cookies []*http.Cookie) {
+func (c *Cli) saveCookies(resp *http.Response) {
+	if _, ok := resp.Header["Set-Cookie"]; !ok {
+		return
+	}
+
+	cookies := resp.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Domain == "" {
+			log.Debug("Setting DOMAIN to %s for Cookie: %s", resp.Request.URL.Host, cookie)
+			cookie.Domain = resp.Request.URL.Host
+		}
+	}
+
 	// expiry in one week from now
 	expiry := time.Now().Add(24 * 7 * time.Hour)
 	for _, cookie := range cookies {
@@ -519,11 +531,6 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 	req.Header.Set("Content-Type", contentType)
 
 	log.Debugf("%s %s", req.Method, req.URL.String())
-	if log.IsEnabledFor(logging.DEBUG) {
-		out, _ := httputil.DumpRequestOut(req, true)
-		log.Debugf("%s", out)
-	}
-
 	return c.makeRequest(req);
 }
 
@@ -547,7 +554,22 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 	if resp, err = c.ua.Do(req); resp != nil {
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
+		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+			out, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				log.Debugf("Failed to Dump Request: %s", err)
+			} else {
+				log.Debugf("Request: %s", out)
+			}
+			out, err = httputil.DumpResponse(resp, true)
+			if err != nil {
+				log.Debugf("Failed to Dump Response: %s", err)
+			} else {
+				log.Debugf("Response: %s", out)
+			}
+		}
+
+		if (resp.StatusCode < 200 || resp.StatusCode >= 300) && resp.StatusCode != 401 {
 			log.Debugf("response status: %s", resp.Status)
 		}
 
@@ -555,18 +577,13 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 			r.Body.Close()
 		})
 
-		if _, ok := resp.Header["Set-Cookie"]; ok {
-			cookies := resp.Cookies()
-			for _, cookie := range cookies {
-				if cookie.Domain == "" {
-					log.Debug("Setting DOMAIN to %s for Cookie: %s", req.URL.Host, cookie)
-					cookie.Domain = req.URL.Host
-				}
-			}
-			c.saveCookies(cookies)
-		}
+		c.saveCookies(resp)
 		return resp, err
 	} else {
+		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+			out, _ := httputil.DumpRequestOut(req, true)
+			log.Debugf("Request: %s", out)
+		}
 		return nil, err
 	}
 	return resp, nil
