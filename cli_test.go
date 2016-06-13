@@ -2,13 +2,13 @@ package cliby
 
 import (
 	"encoding/json"
+	"github.com/coryb/cliby/util"
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/op/go-logging.v1"
 	"os"
 	"reflect"
 	"testing"
-	"github.com/coryb/cliby/util"
 )
 
 var TestOptionMergeExpected = map[string]interface{}{
@@ -199,8 +199,8 @@ func TestOptionMergeSubdir(t *testing.T) {
 }
 
 func TestPromptWithDefault(t *testing.T) {
-	expectDefault := util.PromptWithDefault("foo","bar")
+	expectDefault := util.PromptWithDefault("foo", "bar")
 	if expectDefault != "bar" {
 		t.Fail()
-		}
+	}
 }
