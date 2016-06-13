@@ -2,6 +2,7 @@ package cliby
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/coryb/cliby/util"
@@ -35,6 +36,7 @@ type Cli struct {
 	options    interface{}
 	templates  map[string]string
 	name       string
+	authMap    map[string]string
 }
 
 type Options struct {
@@ -49,6 +51,7 @@ func New(name string) *Cli {
 		ua:         &http.Client{},
 		name:       name,
 		commands:   make(map[string]func() error),
+		authMap:    make(map[string]string),
 	}
 
 	return cli
@@ -116,6 +119,10 @@ func (c *Cli) SetHttpClient(client *http.Client) {
 
 func (c *Cli) SetCookieFile(file string) {
 	c.cookieFile = file
+}
+
+func (c *Cli) RegisterAuthentication(hostname, user, password string) {
+	c.authMap[hostname] = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password))))
 }
 
 func (c *Cli) CommandLine() *kingpin.Application {
@@ -531,7 +538,7 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 	req.Header.Set("Content-Type", contentType)
 
 	log.Debugf("%s %s", req.Method, req.URL.String())
-	return c.makeRequest(req);
+	return c.makeRequest(req)
 }
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
@@ -553,6 +560,10 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 }
 
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
+	if auth, ok := c.authMap[req.URL.Host]; ok {
+		req.Header.Add("Authorization", auth)
+	}
+
 	if resp, err = c.ua.Do(req); resp != nil {
 		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
 			out, err := httputil.DumpRequest(req, true)
