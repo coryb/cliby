@@ -11,6 +11,7 @@ import (
 	"gopkg.in/coryb/yaml.v2"
 	"gopkg.in/op/go-logging.v1"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
@@ -502,6 +503,12 @@ func (c *Cli) initCookies(uri string) {
 	}
 }
 
+func (c *Cli) PostTimeout(msTimeout int, uri, content string) (*http.Response, error) {
+	oldUA := c.setTimeoutHandler(msTimeout)
+    defer c.SetHttpClient(oldUA)
+	return  c.Post(uri, content)
+}
+
 func (c *Cli) Post(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
 	return c.makeRequestWithContent("POST", uri, content, "application/json")
@@ -539,6 +546,29 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 
 	log.Debugf("%s %s", req.Method, req.URL.String())
 	return c.makeRequest(req)
+}
+
+func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
+    oldUA := c.GetHttpClient()
+    var transport http.RoundTripper = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   time.Duration(msTimeout) * time.Millisecond,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+    c.SetHttpClient(&http.Client{
+		Transport: transport,
+	})
+	return oldUA
+}
+
+func (c *Cli) GetTimeout(msTimeout int, uri string) (*http.Response, error) {
+	oldUA := c.setTimeoutHandler(msTimeout)
+    defer c.SetHttpClient(oldUA)
+	return  c.Get(uri)
 }
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
