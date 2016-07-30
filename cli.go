@@ -285,7 +285,11 @@ func populateEnv(iface Interface) {
 			case bool:
 				val = fmt.Sprintf("%t", t)
 			default:
-				val = fmt.Sprintf("%v", t)
+				val, _ = util.JsonEncode(t)
+				val = strings.TrimSpace(val)
+				if val == "null" {
+					val = ""
+				}
 			}
 			os.Setenv(envName, val)
 		}
@@ -441,8 +445,11 @@ func (c *Cli) saveCookies(resp *http.Response) {
 	cookies := resp.Cookies()
 	for _, cookie := range cookies {
 		if cookie.Domain == "" {
-			log.Debug("Setting DOMAIN to %s for Cookie: %s", resp.Request.URL.Host, cookie)
-			cookie.Domain = resp.Request.URL.Host
+			// if it is host:port then we need to split off port
+			parts := strings.Split(resp.Request.URL.Host, ":")
+			host := parts[0]
+			log.Debug("Setting DOMAIN to %s for Cookie: %s", host, cookie)
+			cookie.Domain = host
 		}
 	}
 
@@ -487,7 +494,10 @@ func (c *Cli) loadCookies() []*http.Cookie {
 	if err != nil {
 		log.Errorf("Failed to parse json from file %s: %s", c.cookieFile, err)
 	}
-	log.Debugf("Loading Cookies: %s", cookies)
+
+	if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+		log.Debugf("Loading Cookies: %s", cookies)
+	}
 	return cookies
 }
 
@@ -505,8 +515,8 @@ func (c *Cli) initCookies(uri string) {
 
 func (c *Cli) PostTimeout(msTimeout int, uri, content string) (*http.Response, error) {
 	oldUA := c.setTimeoutHandler(msTimeout)
-    defer c.SetHttpClient(oldUA)
-	return  c.Post(uri, content)
+	defer c.SetHttpClient(oldUA)
+	return c.Post(uri, content)
 }
 
 func (c *Cli) Post(uri string, content string) (*http.Response, error) {
@@ -549,8 +559,8 @@ func (c *Cli) makeRequestWithContent(method string, uri string, content string, 
 }
 
 func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
-    oldUA := c.GetHttpClient()
-    var transport http.RoundTripper = &http.Transport{
+	oldUA := c.GetHttpClient()
+	var transport http.RoundTripper = &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
 			Timeout:   time.Duration(msTimeout) * time.Millisecond,
@@ -559,7 +569,7 @@ func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
 
-    c.SetHttpClient(&http.Client{
+	c.SetHttpClient(&http.Client{
 		Transport: transport,
 	})
 	return oldUA
@@ -567,8 +577,8 @@ func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
 
 func (c *Cli) GetTimeout(msTimeout int, uri string) (*http.Response, error) {
 	oldUA := c.setTimeoutHandler(msTimeout)
-    defer c.SetHttpClient(oldUA)
-	return  c.Get(uri)
+	defer c.SetHttpClient(oldUA)
+	return c.Get(uri)
 }
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
