@@ -617,8 +617,6 @@ func (c *Cli) Head(uri string) (*http.Response, error) {
 	return c.makeRequest(req)
 }
 
-
-
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 	if auth, ok := c.authMap[req.URL.Host]; ok {
 		req.Header.Add("Authorization", auth)
