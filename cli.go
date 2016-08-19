@@ -599,6 +599,26 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 	return c.makeRequest(req)
 }
 
+func (c *Cli) Head(uri string) (*http.Response, error) {
+	c.initCookies(uri)
+	req, err := http.NewRequest("HEAD", uri, nil)
+	if err != nil {
+		log.Errorf("Invalid Request: %s", uri)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	log.Debugf("%s %s", req.Method, req.URL.String())
+	if log.IsEnabledFor(logging.DEBUG) {
+		logBuffer := bytes.NewBuffer(make([]byte, 0))
+		req.Write(logBuffer)
+		log.Debugf("%s", logBuffer)
+	}
+
+	return c.makeRequest(req)
+}
+
+
+
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 	if auth, ok := c.authMap[req.URL.Host]; ok {
 		req.Header.Add("Authorization", auth)
@@ -625,7 +645,10 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 		}
 
 		runtime.SetFinalizer(resp, func(r *http.Response) {
-			r.Body.Close()
+			// body is nil for HEAD requests
+			if r.Body != nil {
+				r.Body.Close()
+			}
 		})
 
 		c.saveCookies(resp)
