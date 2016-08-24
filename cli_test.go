@@ -2,6 +2,7 @@ package cliby
 
 import (
 	"encoding/json"
+	"github.com/coryb/cliby/util"
 	"github.com/pmezard/go-difflib/difflib"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/op/go-logging.v1"
@@ -193,6 +194,13 @@ func TestOptionMergeSubdir(t *testing.T) {
 		}
 		result, _ := difflib.GetUnifiedDiffString(diff)
 		log.Errorf("Diff:\n%s", result)
+		t.Fail()
+	}
+}
+
+func TestPromptWithDefault(t *testing.T) {
+	expectDefault := util.PromptWithDefault("foo", "bar")
+	if expectDefault != "bar" {
 		t.Fail()
 	}
 }

@@ -181,6 +181,12 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		    }
 		    return nil
 		},
+		"toUpper": func(content string) string {
+			return strings.ToUpper(content)
+		},
+		"toLower": func(content string) string {
+			return strings.ToLower(content)
+		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
 		log.Error("Failed to parse template: %s", err)
@@ -270,6 +276,18 @@ func Prompt(prompt string) string {
 	fmt.Printf("%s", prompt)
 	out, _ := reader.ReadString('\n')
 	return strings.TrimSpace(out)
+}
+
+func PromptWithDefault(prompt string, defaultValue string) string {
+	reader := bufio.NewReader(os.Stdin)
+	prompt = fmt.Sprintf("%s [%s]: ", prompt, defaultValue)
+	fmt.Printf("%s", prompt)
+	out, _ := reader.ReadString('\n')
+	if len(strings.TrimSpace(out)) == 0 {
+		return defaultValue
+	} else {
+		return strings.TrimSpace(out)
+	}
 }
 
 func ParseYaml(file string, opts *map[string]interface{}) {

@@ -2,6 +2,7 @@ package cliby
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/coryb/cliby/util"
@@ -10,6 +11,7 @@ import (
 	"gopkg.in/coryb/yaml.v2"
 	"gopkg.in/op/go-logging.v1"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httputil"
@@ -35,6 +37,7 @@ type Cli struct {
 	options    interface{}
 	templates  map[string]string
 	name       string
+	authMap    map[string]string
 }
 
 type Options struct {
@@ -49,6 +52,7 @@ func New(name string) *Cli {
 		ua:         &http.Client{},
 		name:       name,
 		commands:   make(map[string]func() error),
+		authMap:    make(map[string]string),
 	}
 
 	return cli
@@ -82,6 +86,10 @@ func (c *Cli) SetCommands(commands map[string]func() error) {
 	c.commands = commands
 }
 
+func (c *Cli) GetCommands() map[string]func() error {
+	return c.commands
+}
+
 func (c *Cli) GetCommand(command string) func() error {
 	if fn, ok := c.commands[command]; !ok {
 		return nil
@@ -112,6 +120,10 @@ func (c *Cli) SetHttpClient(client *http.Client) {
 
 func (c *Cli) SetCookieFile(file string) {
 	c.cookieFile = file
+}
+
+func (c *Cli) RegisterAuthentication(hostname, user, password string) {
+	c.authMap[hostname] = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password))))
 }
 
 func (c *Cli) CommandLine() *kingpin.Application {
@@ -273,7 +285,11 @@ func populateEnv(iface Interface) {
 			case bool:
 				val = fmt.Sprintf("%t", t)
 			default:
-				val = fmt.Sprintf("%v", t)
+				val, _ = util.JsonEncode(t)
+				val = strings.TrimSpace(val)
+				if val == "null" {
+					val = ""
+				}
 			}
 			os.Setenv(envName, val)
 		}
@@ -296,7 +312,11 @@ func LoadConfigs(iface Interface, configFile string) {
 			if stat.Mode()&0111 == 0 {
 				log.Debugf("Loading config %s", file)
 				if fh, err := ioutil.ReadFile(file); err == nil {
-					yaml.Unmarshal(fh, tmp)
+					err := yaml.Unmarshal(fh, tmp)
+					if err != nil {
+						log.Errorf("Unable to parse %s: %s", file, err)
+						panic(Exit{1})
+					}
 					if reflect.ValueOf(tmp).Kind() == reflect.Map {
 						tmp, _ = util.YamlFixup(tmp)
 					}
@@ -312,7 +332,11 @@ func LoadConfigs(iface Interface, configFile string) {
 					log.Errorf("%s is exectuable, but it failed to execute: %s\n%s", file, err, cmd.Stderr)
 					panic(Exit{1})
 				}
-				yaml.Unmarshal(stdout.Bytes(), &tmp)
+				err := yaml.Unmarshal(stdout.Bytes(), tmp)
+				if err != nil {
+					log.Errorf("Failed to parse STDOUT from executable config file %s: %s", file, err)
+					panic(Exit{1})
+				}
 			}
 
 			nv := reflect.ValueOf(tmp)
@@ -413,7 +437,22 @@ Outer:
 	return ov
 }
 
-func (c *Cli) saveCookies(cookies []*http.Cookie) {
+func (c *Cli) saveCookies(resp *http.Response) {
+	if _, ok := resp.Header["Set-Cookie"]; !ok {
+		return
+	}
+
+	cookies := resp.Cookies()
+	for _, cookie := range cookies {
+		if cookie.Domain == "" {
+			// if it is host:port then we need to split off port
+			parts := strings.Split(resp.Request.URL.Host, ":")
+			host := parts[0]
+			log.Debug("Setting DOMAIN to %s for Cookie: %s", host, cookie)
+			cookie.Domain = host
+		}
+	}
+
 	// expiry in one week from now
 	expiry := time.Now().Add(24 * 7 * time.Hour)
 	for _, cookie := range cookies {
@@ -423,11 +462,11 @@ func (c *Cli) saveCookies(cookies []*http.Cookie) {
 	if currentCookies := c.loadCookies(); currentCookies != nil {
 		currentCookiesByName := make(map[string]*http.Cookie)
 		for _, cookie := range currentCookies {
-			currentCookiesByName[cookie.Name] = cookie
+			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
 		}
 
 		for _, cookie := range cookies {
-			currentCookiesByName[cookie.Name] = cookie
+			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
 		}
 
 		mergedCookies := make([]*http.Cookie, 0, len(currentCookiesByName))
@@ -455,17 +494,29 @@ func (c *Cli) loadCookies() []*http.Cookie {
 	if err != nil {
 		log.Errorf("Failed to parse json from file %s: %s", c.cookieFile, err)
 	}
-	log.Debugf("Loading Cookies: %s", cookies)
+
+	if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+		log.Debugf("Loading Cookies: %s", cookies)
+	}
 	return cookies
 }
 
 func (c *Cli) initCookies(uri string) {
+	url, _ := url.Parse(uri)
 	if c.ua.Jar == nil {
-		url, _ := url.Parse(uri)
 		jar, _ := cookiejar.New(nil)
 		c.ua.Jar = jar
 		c.ua.Jar.SetCookies(url, c.loadCookies())
 	}
+	for _, cookie := range c.ua.Jar.Cookies(url) {
+		log.Debugf("Using Cookie: %s", cookie)
+	}
+}
+
+func (c *Cli) PostTimeout(msTimeout int, uri, content string) (*http.Response, error) {
+	oldUA := c.setTimeoutHandler(msTimeout)
+	defer c.SetHttpClient(oldUA)
+	return c.Post(uri, content)
 }
 
 func (c *Cli) Post(uri string, content string) (*http.Response, error) {
@@ -478,6 +529,11 @@ func (c *Cli) Put(uri string, content string) (*http.Response, error) {
 	return c.makeRequestWithContent("PUT", uri, content, "application/json")
 }
 
+func (c *Cli) Delete(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("DELETE", uri, content, "application/json")
+}
+
 func (c *Cli) PostXML(uri string, content string) (*http.Response, error) {
 	c.initCookies(uri)
 	return c.makeRequestWithContent("POST", uri, content, "application/xml")
@@ -488,29 +544,41 @@ func (c *Cli) PutXML(uri string, content string) (*http.Response, error) {
 	return c.makeRequestWithContent("PUT", uri, content, "application/xml")
 }
 
+func (c *Cli) PostForm(uri string, content string) (*http.Response, error) {
+	c.initCookies(uri)
+	return c.makeRequestWithContent("POST", uri, content, "application/x-www-form-urlencoded")
+}
+
 func (c *Cli) makeRequestWithContent(method string, uri string, content string, contentType string) (*http.Response, error) {
 	buffer := bytes.NewBufferString(content)
 	req, _ := http.NewRequest(method, uri, buffer)
 	req.Header.Set("Content-Type", contentType)
 
 	log.Debugf("%s %s", req.Method, req.URL.String())
-	if log.IsEnabledFor(logging.DEBUG) {
-		out, _ := httputil.DumpRequestOut(req, true)
-		log.Debugf("%s", out)
+	return c.makeRequest(req)
+}
+
+func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
+	oldUA := c.GetHttpClient()
+	var transport http.RoundTripper = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   time.Duration(msTimeout) * time.Millisecond,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
 	}
 
-	if resp, err := c.makeRequest(req); err != nil {
-		return nil, err
-	} else {
-		if resp.StatusCode == 401 {
-			if err := c.Login(); err != nil {
-				return nil, err
-			}
-			req, _ = http.NewRequest(method, uri, bytes.NewBufferString(content))
-			return c.makeRequest(req)
-		}
-		return resp, err
-	}
+	c.SetHttpClient(&http.Client{
+		Transport: transport,
+	})
+	return oldUA
+}
+
+func (c *Cli) GetTimeout(msTimeout int, uri string) (*http.Response, error) {
+	oldUA := c.setTimeoutHandler(msTimeout)
+	defer c.SetHttpClient(oldUA)
+	return c.Get(uri)
 }
 
 func (c *Cli) Get(uri string) (*http.Response, error) {
@@ -528,34 +596,67 @@ func (c *Cli) Get(uri string) (*http.Response, error) {
 		log.Debugf("%s", logBuffer)
 	}
 
-	if resp, err := c.makeRequest(req); err != nil {
+	return c.makeRequest(req)
+}
+
+func (c *Cli) Head(uri string) (*http.Response, error) {
+	c.initCookies(uri)
+	req, err := http.NewRequest("HEAD", uri, nil)
+	if err != nil {
+		log.Errorf("Invalid Request: %s", uri)
 		return nil, err
-	} else {
-		if resp.StatusCode == 401 {
-			if err := c.Login(); err != nil {
-				return nil, err
-			}
-			return c.makeRequest(req)
-		}
-		return resp, err
 	}
+	req.Header.Set("Content-Type", "application/json")
+	log.Debugf("%s %s", req.Method, req.URL.String())
+	if log.IsEnabledFor(logging.DEBUG) {
+		logBuffer := bytes.NewBuffer(make([]byte, 0))
+		req.Write(logBuffer)
+		log.Debugf("%s", logBuffer)
+	}
+
+	return c.makeRequest(req)
 }
 
 func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
-	if resp, err = c.ua.Do(req); err != nil {
-		return nil, err
-	} else {
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 && resp.StatusCode != 401 {
+	if auth, ok := c.authMap[req.URL.Host]; ok {
+		req.Header.Add("Authorization", auth)
+	}
+
+	if resp, err = c.ua.Do(req); resp != nil {
+		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+			out, err := httputil.DumpRequest(req, true)
+			if err != nil {
+				log.Debugf("Failed to Dump Request: %s", err)
+			} else {
+				log.Debugf("Request: %s", out)
+			}
+			out, err = httputil.DumpResponse(resp, true)
+			if err != nil {
+				log.Debugf("Failed to Dump Response: %s", err)
+			} else {
+				log.Debugf("Response: %s", out)
+			}
+		}
+
+		if (resp.StatusCode < 200 || resp.StatusCode >= 300) && resp.StatusCode != 401 {
 			log.Debugf("response status: %s", resp.Status)
 		}
 
 		runtime.SetFinalizer(resp, func(r *http.Response) {
-			r.Body.Close()
+			// body is nil for HEAD requests
+			if r.Body != nil {
+				r.Body.Close()
+			}
 		})
 
-		if _, ok := resp.Header["Set-Cookie"]; ok {
-			c.saveCookies(resp.Cookies())
+		c.saveCookies(resp)
+		return resp, err
+	} else {
+		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+			out, _ := httputil.DumpRequestOut(req, true)
+			log.Debugf("Request: %s", out)
 		}
+		return nil, err
 	}
 	return resp, nil
 }
@@ -787,10 +888,6 @@ func setKeyString(data interface{}, key string, value interface{}) {
 		}
 	}
 	log.Debugf("New val: %#v", val.Interface())
-}
-
-func (c *Cli) Login() error {
-	return fmt.Errorf("Login not implemented")
 }
 
 // func (c *Cli) ExportTemplates() error {
