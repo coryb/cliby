@@ -175,6 +175,12 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		"age": func(content string) (string, error) {
 			return FuzzyAge(content)
 		},
+		"specialCharMap": func(m map[string]interface {}, key string) interface {} {
+		    if val, ok := m[key]; ok {
+			    return val
+		    }
+		    return nil
+		},
 		"toUpper": func(content string) string {
 			return strings.ToUpper(content)
 		},
