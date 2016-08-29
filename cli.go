@@ -506,8 +506,8 @@ func (c *Cli) initCookies(uri string) {
 	if c.ua.Jar == nil {
 		jar, _ := cookiejar.New(nil)
 		c.ua.Jar = jar
-		c.ua.Jar.SetCookies(url, c.loadCookies())
 	}
+	c.ua.Jar.SetCookies(url, c.loadCookies())
 	for _, cookie := range c.ua.Jar.Cookies(url) {
 		log.Debugf("Using Cookie: %s", cookie)
 	}
