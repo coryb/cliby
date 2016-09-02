@@ -118,6 +118,13 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 				return string(bytes), nil
 			}
 		},
+		"toYAML": func(content interface{}) (string, error) {
+			if bytes, err := yaml.Marshal(content); err != nil {
+				return "", err
+			} else {
+				return string(bytes), nil
+			}
+		},
 		"append": func(more string, content interface{}) (string, error) {
 			switch value := content.(type) {
 			case string:
@@ -180,6 +187,9 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		},
 		"toLower": func(content string) string {
 			return strings.ToLower(content)
+		},
+		"ftime": func(format string, t int64) string {
+			return time.Unix(t, 0).Format(format)
 		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
