@@ -642,13 +642,6 @@ func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
 			log.Debugf("response status: %s", resp.Status)
 		}
 
-		runtime.SetFinalizer(resp, func(r *http.Response) {
-			// body is nil for HEAD requests
-			if r.Body != nil {
-				r.Body.Close()
-			}
-		})
-
 		c.saveCookies(resp)
 		return resp, err
 	} else {
