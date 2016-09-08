@@ -161,7 +161,7 @@ func RunCommand(i Interface, command string) error {
 	return fmt.Errorf("Command %s Unknown", command)
 }
 
-func ProcessAllOptions(i Interface) string {
+func ProcessAllOptions(i Interface) (string, error) {
 	app := i.CommandLine()
 	app.Terminate(func(status int) {
 		for _, arg := range os.Args {
@@ -173,24 +173,14 @@ func ProcessAllOptions(i Interface) string {
 	})
 	command, err := app.Parse(os.Args[1:])
 	if err != nil {
-		log.Errorf("%s", err)
-		if command == "" {
-			for _, arg := range os.Args[1:] {
-				if arg[0] != '-' {
-					command = arg
-					break
-				}
-			}
-		}
-		app.Usage([]string{command})
-
-		panic(Exit{1})
+		return command, err
 	}
+
 	os.Setenv(fmt.Sprintf("%s_OPERATION", strings.ToUpper(i.Name())), command)
 
 	// at this point Config is populated with with defaults
 	processConfigs(i)
-	return command
+	return command, nil
 }
 
 // func (c *Cli) ProcessAllOptions() string {
