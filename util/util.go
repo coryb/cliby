@@ -191,6 +191,9 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		"ftime": func(format string, t int64) string {
 			return time.Unix(t, 0).Format(format)
 		},
+		"env": func(name string) string {
+			return os.Getenv(name)
+		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
 		log.Error("Failed to parse template: %s", err)
