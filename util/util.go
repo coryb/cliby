@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mgutz/ansi"
-	"github.com/op/go-logging"
-	"gopkg.in/coryb/yaml.v2"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +13,10 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/mgutz/ansi"
+	"github.com/op/go-logging"
+	"gopkg.in/coryb/yaml.v2"
 )
 
 var log = logging.MustGetLogger("util")
@@ -193,6 +194,12 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		},
 		"env": func(name string) string {
 			return os.Getenv(name)
+		},
+		"hasPrefix": func(content, prefix string) bool {
+			return strings.HasPrefix(content, prefix)
+		},
+		"hasSuffix": func(content, suffix string) bool {
+			return strings.HasSuffix(content, suffix)
 		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
