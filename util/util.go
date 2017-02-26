@@ -201,6 +201,12 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		"hasSuffix": func(content, suffix string) bool {
 			return strings.HasSuffix(content, suffix)
 		},
+		"trimPrefix": func(content, prefix string) string {
+			return strings.TrimPrefix(content, prefix)
+		},
+		"trimSuffix": func(content, suffix string) string {
+			return strings.TrimSuffix(content, suffix)
+		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
 		log.Error("Failed to parse template: %s", err)
