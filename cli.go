@@ -5,11 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/coryb/cliby/util"
-	"github.com/fatih/camelcase"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/coryb/yaml.v2"
-	"gopkg.in/op/go-logging.v1"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -23,6 +18,12 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/fatih/camelcase"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/coryb/cliby.v1/util"
+	"gopkg.in/coryb/yaml.v2"
+	"gopkg.in/op/go-logging.v1"
 )
 
 var log = logging.MustGetLogger("cliby")

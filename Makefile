@@ -16,11 +16,11 @@ PLATFORMS= \
 DIST=$(shell pwd)/dist
 export GOPATH=$(shell pwd)
 
-test: src/github.com/coryb/cliby
+test: src/gopkg.in/coryb/cliby.v1
 	go test -v
 
-debug: src/github.com/coryb/cliby
-	cd src/github.com/coryb/cliby && go get -v github.com/mailgun/godebug && $(GOPATH)/bin/godebug test -instrument github.com/coryb/cliby,encoding/json
+debug: src/gopkg.in/coryb/cliby.v1
+	cd src/gopkg.in/coryb/cliby.v1 && go get -v github.com/mailgun/godebug && $(GOPATH)/bin/godebug test -instrument gopkg.in/coryb/cliby.v1,encoding/json
 
 src/%:
 	mkdir -p $(@D)

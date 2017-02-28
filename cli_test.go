@@ -2,13 +2,14 @@ package cliby
 
 import (
 	"encoding/json"
-	"github.com/coryb/cliby/util"
-	"github.com/pmezard/go-difflib/difflib"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"gopkg.in/op/go-logging.v1"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/pmezard/go-difflib/difflib"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/coryb/cliby.v1/util"
+	"gopkg.in/op/go-logging.v1"
 )
 
 var TestOptionMergeExpected = map[string]interface{}{
