@@ -26,7 +26,7 @@ func TestRunTemplateFindLatestArtifact(t *testing.T) {
 
 	var blank map[string]string
 	var buf, expected bytes.Buffer
-	if err := RunTemplate(`Find glob: {{findLatestArtifact "**/*.txt"}}`, blank, &buf); err != nil {
+	if err := RunTemplate(`Find glob: {{findLatestFile "**/*.txt"}}`, blank, &buf); err != nil {
 		t.Error(err)
 	}
 

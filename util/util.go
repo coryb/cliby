@@ -211,8 +211,8 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		"cwd": func() (string, error) {
 			return os.Getwd()
 		},
-		"findLatestArtifact": func(content string) (string, error) {
-			matches, err := doublestar.Glob(content)
+		"findLatestFile": func(glob string) (string, error) {
+			matches, err := doublestar.Glob(glob)
 			if err != nil {
 				return "", err
 			}
@@ -234,7 +234,7 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 				}
 			}
 			if artifact.Path == "" {
-				return "", fmt.Errorf("No Artifact Found matching glob: %v", content)
+				return "", fmt.Errorf("No file found matching glob: %s", glob)
 			}
 			return artifact.Path, nil
 		},
