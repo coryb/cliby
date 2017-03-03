@@ -14,6 +14,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/mgutz/ansi"
 	"github.com/op/go-logging"
 	"gopkg.in/coryb/yaml.v2"
@@ -206,6 +207,36 @@ func RunTemplate(templateContent string, data interface{}, out io.Writer) error 
 		},
 		"trimSuffix": func(content, suffix string) string {
 			return strings.TrimSuffix(content, suffix)
+		},
+		"cwd": func() (string, error) {
+			return os.Getwd()
+		},
+		"findLatestFile": func(glob string) (string, error) {
+			matches, err := doublestar.Glob(glob)
+			if err != nil {
+				return "", err
+			}
+			artifact := struct {
+				Path string
+				Info os.FileInfo
+			}{}
+			for _, matchPath := range matches {
+				info, err := os.Stat(matchPath)
+				if err != nil {
+					return "", err
+				}
+				if artifact.Path == "" {
+					artifact.Info = info
+					artifact.Path = matchPath
+				} else if artifact.Info.ModTime().Before(info.ModTime()) {
+					artifact.Info = info
+					artifact.Path = matchPath
+				}
+			}
+			if artifact.Path == "" {
+				return "", fmt.Errorf("No file found matching glob: %s", glob)
+			}
+			return artifact.Path, nil
 		},
 	}
 	if tmpl, err := template.New("template").Funcs(funcs).Parse(templateContent); err != nil {
