@@ -2,21 +2,14 @@ package cliby
 
 import (
 	"bytes"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
-	"net/http/cookiejar"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/fatih/camelcase"
@@ -31,14 +24,14 @@ var log = logging.MustGetLogger("cliby")
 type Exit struct{ Code int }
 
 type Cli struct {
-	cookieFile string
-	ua         *http.Client
-	commands   map[string]func() error
-	defaults   interface{}
-	options    interface{}
-	templates  map[string]string
-	name       string
-	authMap    map[string]string
+	// cookieFile string
+	ua        *http.Client
+	commands  map[string]func() error
+	defaults  interface{}
+	options   interface{}
+	templates map[string]string
+	name      string
+	// authMap   map[string]string
 }
 
 type Options struct {
@@ -46,14 +39,14 @@ type Options struct {
 }
 
 func New(name string) *Cli {
-	homedir := os.Getenv("HOME")
+	// homedir := os.Getenv("HOME")
 
 	cli := &Cli{
-		cookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
-		ua:         &http.Client{},
-		name:       name,
-		commands:   make(map[string]func() error),
-		authMap:    make(map[string]string),
+		// cookieFile: fmt.Sprintf("%s/.%s.d/cookies.js", homedir, name),
+		ua:       &http.Client{},
+		name:     name,
+		commands: make(map[string]func() error),
+		// authMap:    make(map[string]string),
 	}
 
 	return cli
@@ -111,21 +104,21 @@ func (c *Cli) GetTemplate(template string) string {
 	}
 }
 
-func (c *Cli) GetHttpClient() *http.Client {
-	return c.ua
-}
+// func (c *Cli) GetHttpClient() *http.Client {
+// 	return c.ua
+// }
 
-func (c *Cli) SetHttpClient(client *http.Client) {
-	c.ua = client
-}
+// func (c *Cli) SetHttpClient(client *http.Client) {
+// 	c.ua = client
+// }
 
-func (c *Cli) SetCookieFile(file string) {
-	c.cookieFile = file
-}
+// func (c *Cli) SetCookieFile(file string) {
+// 	c.cookieFile = file
+// }
 
-func (c *Cli) RegisterAuthentication(hostname, user, password string) {
-	c.authMap[hostname] = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password))))
-}
+// func (c *Cli) RegisterAuthentication(hostname, user, password string) {
+// 	c.authMap[hostname] = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password))))
+// }
 
 func (c *Cli) CommandLine() *kingpin.Application {
 	log.Errorf("CommandLine not implemented")
@@ -428,222 +421,222 @@ Outer:
 	return ov
 }
 
-func (c *Cli) saveCookies(resp *http.Response) {
-	if _, ok := resp.Header["Set-Cookie"]; !ok {
-		return
-	}
+// func (c *Cli) saveCookies(resp *http.Response) {
+// 	if _, ok := resp.Header["Set-Cookie"]; !ok {
+// 		return
+// 	}
 
-	cookies := resp.Cookies()
-	for _, cookie := range cookies {
-		if cookie.Domain == "" {
-			// if it is host:port then we need to split off port
-			parts := strings.Split(resp.Request.URL.Host, ":")
-			host := parts[0]
-			log.Debug("Setting DOMAIN to %s for Cookie: %s", host, cookie)
-			cookie.Domain = host
-		}
-	}
+// 	cookies := resp.Cookies()
+// 	for _, cookie := range cookies {
+// 		if cookie.Domain == "" {
+// 			// if it is host:port then we need to split off port
+// 			parts := strings.Split(resp.Request.URL.Host, ":")
+// 			host := parts[0]
+// 			log.Debug("Setting DOMAIN to %s for Cookie: %s", host, cookie)
+// 			cookie.Domain = host
+// 		}
+// 	}
 
-	// expiry in one week from now
-	expiry := time.Now().Add(24 * 7 * time.Hour)
-	for _, cookie := range cookies {
-		cookie.Expires = expiry
-	}
+// 	// expiry in one week from now
+// 	expiry := time.Now().Add(24 * 7 * time.Hour)
+// 	for _, cookie := range cookies {
+// 		cookie.Expires = expiry
+// 	}
 
-	if currentCookies := c.loadCookies(); currentCookies != nil {
-		currentCookiesByName := make(map[string]*http.Cookie)
-		for _, cookie := range currentCookies {
-			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
-		}
+// 	if currentCookies := c.loadCookies(); currentCookies != nil {
+// 		currentCookiesByName := make(map[string]*http.Cookie)
+// 		for _, cookie := range currentCookies {
+// 			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
+// 		}
 
-		for _, cookie := range cookies {
-			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
-		}
+// 		for _, cookie := range cookies {
+// 			currentCookiesByName[cookie.Name+cookie.Domain] = cookie
+// 		}
 
-		mergedCookies := make([]*http.Cookie, 0, len(currentCookiesByName))
-		for _, v := range currentCookiesByName {
-			mergedCookies = append(mergedCookies, v)
-		}
-		util.JsonWrite(c.cookieFile, mergedCookies)
-	} else {
-		util.JsonWrite(c.cookieFile, cookies)
-	}
-}
+// 		mergedCookies := make([]*http.Cookie, 0, len(currentCookiesByName))
+// 		for _, v := range currentCookiesByName {
+// 			mergedCookies = append(mergedCookies, v)
+// 		}
+// 		util.JsonWrite(c.cookieFile, mergedCookies)
+// 	} else {
+// 		util.JsonWrite(c.cookieFile, cookies)
+// 	}
+// }
 
-func (c *Cli) loadCookies() []*http.Cookie {
-	bytes, err := ioutil.ReadFile(c.cookieFile)
-	if err != nil && os.IsNotExist(err) {
-		// dont load cookies if the file does not exist
-		return nil
-	}
-	if err != nil {
-		log.Errorf("Failed to open %s: %s", c.cookieFile, err)
-		panic(Exit{1})
-	}
-	cookies := make([]*http.Cookie, 0)
-	err = json.Unmarshal(bytes, &cookies)
-	if err != nil {
-		log.Errorf("Failed to parse json from file %s: %s", c.cookieFile, err)
-	}
+// func (c *Cli) loadCookies() []*http.Cookie {
+// 	bytes, err := ioutil.ReadFile(c.cookieFile)
+// 	if err != nil && os.IsNotExist(err) {
+// 		// dont load cookies if the file does not exist
+// 		return nil
+// 	}
+// 	if err != nil {
+// 		log.Errorf("Failed to open %s: %s", c.cookieFile, err)
+// 		panic(Exit{1})
+// 	}
+// 	cookies := make([]*http.Cookie, 0)
+// 	err = json.Unmarshal(bytes, &cookies)
+// 	if err != nil {
+// 		log.Errorf("Failed to parse json from file %s: %s", c.cookieFile, err)
+// 	}
 
-	if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
-		log.Debugf("Loading Cookies: %s", cookies)
-	}
-	return cookies
-}
+// 	if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+// 		log.Debugf("Loading Cookies: %s", cookies)
+// 	}
+// 	return cookies
+// }
 
-func (c *Cli) initCookies(uri string) {
-	url, _ := url.Parse(uri)
-	if c.ua.Jar == nil {
-		jar, _ := cookiejar.New(nil)
-		c.ua.Jar = jar
-	}
-	c.ua.Jar.SetCookies(url, c.loadCookies())
-	for _, cookie := range c.ua.Jar.Cookies(url) {
-		log.Debugf("Using Cookie: %s", cookie)
-	}
-}
+// func (c *Cli) initCookies(uri string) {
+// 	url, _ := url.Parse(uri)
+// 	if c.ua.Jar == nil {
+// 		jar, _ := cookiejar.New(nil)
+// 		c.ua.Jar = jar
+// 	}
+// 	c.ua.Jar.SetCookies(url, c.loadCookies())
+// 	for _, cookie := range c.ua.Jar.Cookies(url) {
+// 		log.Debugf("Using Cookie: %s", cookie)
+// 	}
+// }
 
-func (c *Cli) PostTimeout(msTimeout int, uri, content string) (*http.Response, error) {
-	oldUA := c.setTimeoutHandler(msTimeout)
-	defer c.SetHttpClient(oldUA)
-	return c.Post(uri, content)
-}
+// func (c *Cli) PostTimeout(msTimeout int, uri, content string) (*http.Response, error) {
+// 	oldUA := c.setTimeoutHandler(msTimeout)
+// 	defer c.SetHttpClient(oldUA)
+// 	return c.Post(uri, content)
+// }
 
-func (c *Cli) Post(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("POST", uri, content, "application/json")
-}
+// func (c *Cli) Post(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("POST", uri, content, "application/json")
+// }
 
-func (c *Cli) Put(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("PUT", uri, content, "application/json")
-}
+// func (c *Cli) Put(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("PUT", uri, content, "application/json")
+// }
 
-func (c *Cli) Delete(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("DELETE", uri, content, "application/json")
-}
+// func (c *Cli) Delete(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("DELETE", uri, content, "application/json")
+// }
 
-func (c *Cli) PostXML(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("POST", uri, content, "application/xml")
-}
+// func (c *Cli) PostXML(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("POST", uri, content, "application/xml")
+// }
 
-func (c *Cli) PutXML(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("PUT", uri, content, "application/xml")
-}
+// func (c *Cli) PutXML(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("PUT", uri, content, "application/xml")
+// }
 
-func (c *Cli) PostForm(uri string, content string) (*http.Response, error) {
-	c.initCookies(uri)
-	return c.makeRequestWithContent("POST", uri, content, "application/x-www-form-urlencoded")
-}
+// func (c *Cli) PostForm(uri string, content string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	return c.makeRequestWithContent("POST", uri, content, "application/x-www-form-urlencoded")
+// }
 
-func (c *Cli) makeRequestWithContent(method string, uri string, content string, contentType string) (*http.Response, error) {
-	buffer := bytes.NewBufferString(content)
-	req, _ := http.NewRequest(method, uri, buffer)
-	req.Header.Set("Content-Type", contentType)
+// func (c *Cli) makeRequestWithContent(method string, uri string, content string, contentType string) (*http.Response, error) {
+// 	buffer := bytes.NewBufferString(content)
+// 	req, _ := http.NewRequest(method, uri, buffer)
+// 	req.Header.Set("Content-Type", contentType)
 
-	log.Debugf("%s %s", req.Method, req.URL.String())
-	return c.makeRequest(req)
-}
+// 	log.Debugf("%s %s", req.Method, req.URL.String())
+// 	return c.makeRequest(req)
+// }
 
-func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
-	oldUA := c.GetHttpClient()
-	var transport http.RoundTripper = &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout:   time.Duration(msTimeout) * time.Millisecond,
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
+// func (c *Cli) setTimeoutHandler(msTimeout int) *http.Client {
+// 	oldUA := c.GetHttpClient()
+// 	var transport http.RoundTripper = &http.Transport{
+// 		Proxy: http.ProxyFromEnvironment,
+// 		Dial: (&net.Dialer{
+// 			Timeout:   time.Duration(msTimeout) * time.Millisecond,
+// 			KeepAlive: 30 * time.Second,
+// 		}).Dial,
+// 		TLSHandshakeTimeout: 10 * time.Second,
+// 	}
 
-	c.SetHttpClient(&http.Client{
-		Transport: transport,
-	})
-	return oldUA
-}
+// 	c.SetHttpClient(&http.Client{
+// 		Transport: transport,
+// 	})
+// 	return oldUA
+// }
 
-func (c *Cli) GetTimeout(msTimeout int, uri string) (*http.Response, error) {
-	oldUA := c.setTimeoutHandler(msTimeout)
-	defer c.SetHttpClient(oldUA)
-	return c.Get(uri)
-}
+// func (c *Cli) GetTimeout(msTimeout int, uri string) (*http.Response, error) {
+// 	oldUA := c.setTimeoutHandler(msTimeout)
+// 	defer c.SetHttpClient(oldUA)
+// 	return c.Get(uri)
+// }
 
-func (c *Cli) Get(uri string) (*http.Response, error) {
-	c.initCookies(uri)
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		log.Errorf("Invalid Request: %s", uri)
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	log.Debugf("%s %s", req.Method, req.URL.String())
-	if log.IsEnabledFor(logging.DEBUG) {
-		logBuffer := bytes.NewBuffer(make([]byte, 0))
-		req.Write(logBuffer)
-		log.Debugf("%s", logBuffer)
-	}
+// func (c *Cli) Get(uri string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	req, err := http.NewRequest("GET", uri, nil)
+// 	if err != nil {
+// 		log.Errorf("Invalid Request: %s", uri)
+// 		return nil, err
+// 	}
+// 	req.Header.Set("Content-Type", "application/json")
+// 	log.Debugf("%s %s", req.Method, req.URL.String())
+// 	if log.IsEnabledFor(logging.DEBUG) {
+// 		logBuffer := bytes.NewBuffer(make([]byte, 0))
+// 		req.Write(logBuffer)
+// 		log.Debugf("%s", logBuffer)
+// 	}
 
-	return c.makeRequest(req)
-}
+// 	return c.makeRequest(req)
+// }
 
-func (c *Cli) Head(uri string) (*http.Response, error) {
-	c.initCookies(uri)
-	req, err := http.NewRequest("HEAD", uri, nil)
-	if err != nil {
-		log.Errorf("Invalid Request: %s", uri)
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	log.Debugf("%s %s", req.Method, req.URL.String())
-	if log.IsEnabledFor(logging.DEBUG) {
-		logBuffer := bytes.NewBuffer(make([]byte, 0))
-		req.Write(logBuffer)
-		log.Debugf("%s", logBuffer)
-	}
+// func (c *Cli) Head(uri string) (*http.Response, error) {
+// 	c.initCookies(uri)
+// 	req, err := http.NewRequest("HEAD", uri, nil)
+// 	if err != nil {
+// 		log.Errorf("Invalid Request: %s", uri)
+// 		return nil, err
+// 	}
+// 	req.Header.Set("Content-Type", "application/json")
+// 	log.Debugf("%s %s", req.Method, req.URL.String())
+// 	if log.IsEnabledFor(logging.DEBUG) {
+// 		logBuffer := bytes.NewBuffer(make([]byte, 0))
+// 		req.Write(logBuffer)
+// 		log.Debugf("%s", logBuffer)
+// 	}
 
-	return c.makeRequest(req)
-}
+// 	return c.makeRequest(req)
+// }
 
-func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
-	if auth, ok := c.authMap[req.URL.Host]; ok {
-		req.Header.Add("Authorization", auth)
-	}
+// func (c *Cli) makeRequest(req *http.Request) (resp *http.Response, err error) {
+// 	if auth, ok := c.authMap[req.URL.Host]; ok {
+// 		req.Header.Add("Authorization", auth)
+// 	}
 
-	if resp, err = c.ua.Do(req); resp != nil {
-		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
-			out, err := httputil.DumpRequest(req, true)
-			if err != nil {
-				log.Debugf("Failed to Dump Request: %s", err)
-			} else {
-				log.Debugf("Request: %s", out)
-			}
-			out, err = httputil.DumpResponse(resp, true)
-			if err != nil {
-				log.Debugf("Failed to Dump Response: %s", err)
-			} else {
-				log.Debugf("Response: %s", out)
-			}
-		}
+// 	if resp, err = c.ua.Do(req); resp != nil {
+// 		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+// 			out, err := httputil.DumpRequest(req, true)
+// 			if err != nil {
+// 				log.Debugf("Failed to Dump Request: %s", err)
+// 			} else {
+// 				log.Debugf("Request: %s", out)
+// 			}
+// 			out, err = httputil.DumpResponse(resp, true)
+// 			if err != nil {
+// 				log.Debugf("Failed to Dump Response: %s", err)
+// 			} else {
+// 				log.Debugf("Response: %s", out)
+// 			}
+// 		}
 
-		if (resp.StatusCode < 200 || resp.StatusCode >= 300) && resp.StatusCode != 401 {
-			log.Debugf("response status: %s", resp.Status)
-		}
+// 		if (resp.StatusCode < 200 || resp.StatusCode >= 300) && resp.StatusCode != 401 {
+// 			log.Debugf("response status: %s", resp.Status)
+// 		}
 
-		c.saveCookies(resp)
-		return resp, err
-	} else {
-		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
-			out, _ := httputil.DumpRequestOut(req, true)
-			log.Debugf("Request: %s", out)
-		}
-		return nil, err
-	}
-	return resp, nil
-}
+// 		c.saveCookies(resp)
+// 		return resp, err
+// 	} else {
+// 		if os.Getenv("LOG_TRACE") != "" && log.IsEnabledFor(logging.DEBUG) {
+// 			out, _ := httputil.DumpRequestOut(req, true)
+// 			log.Debugf("Request: %s", out)
+// 		}
+// 		return nil, err
+// 	}
+// 	return resp, nil
+// }
 
 // func (c *Cli) GetTemplate(name string) string {
 // 	if override, ok := c.Opts["template"].(string); ok {

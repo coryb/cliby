@@ -1,3 +1,5 @@
-
 .idea/
 cliby.iml
+bin/
+pkg/
+src/
