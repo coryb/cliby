@@ -1,7 +1,6 @@
 package util
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -301,45 +300,45 @@ func JsonWrite(file string, data interface{}) {
 	enc.Encode(data)
 }
 
-func PromptYN(prompt string, yes bool) bool {
-	reader := bufio.NewReader(os.Stdin)
-	if !yes {
-		prompt = fmt.Sprintf("%s [y/N]: ", prompt)
-	} else {
-		prompt = fmt.Sprintf("%s [Y/n]: ", prompt)
-	}
+// func PromptYN(prompt string, yes bool) bool {
+// 	reader := bufio.NewReader(os.Stdin)
+// 	if !yes {
+// 		prompt = fmt.Sprintf("%s [y/N]: ", prompt)
+// 	} else {
+// 		prompt = fmt.Sprintf("%s [Y/n]: ", prompt)
+// 	}
 
-	fmt.Printf("%s", prompt)
-	text, _ := reader.ReadString('\n')
-	ans := strings.ToLower(strings.TrimRight(text, "\n"))
-	if ans == "" {
-		return yes
-	}
-	if strings.HasPrefix(ans, "y") {
-		return true
-	}
-	return false
-}
+// 	fmt.Printf("%s", prompt)
+// 	text, _ := reader.ReadString('\n')
+// 	ans := strings.ToLower(strings.TrimRight(text, "\n"))
+// 	if ans == "" {
+// 		return yes
+// 	}
+// 	if strings.HasPrefix(ans, "y") {
+// 		return true
+// 	}
+// 	return false
+// }
 
-func Prompt(prompt string) string {
-	reader := bufio.NewReader(os.Stdin)
-	prompt = fmt.Sprintf("%s: ", prompt)
-	fmt.Printf("%s", prompt)
-	out, _ := reader.ReadString('\n')
-	return strings.TrimSpace(out)
-}
+// func Prompt(prompt string) string {
+// 	reader := bufio.NewReader(os.Stdin)
+// 	prompt = fmt.Sprintf("%s: ", prompt)
+// 	fmt.Printf("%s", prompt)
+// 	out, _ := reader.ReadString('\n')
+// 	return strings.TrimSpace(out)
+// }
 
-func PromptWithDefault(prompt string, defaultValue string) string {
-	reader := bufio.NewReader(os.Stdin)
-	prompt = fmt.Sprintf("%s [%s]: ", prompt, defaultValue)
-	fmt.Printf("%s", prompt)
-	out, _ := reader.ReadString('\n')
-	if len(strings.TrimSpace(out)) == 0 {
-		return defaultValue
-	} else {
-		return strings.TrimSpace(out)
-	}
-}
+// func PromptWithDefault(prompt string, defaultValue string) string {
+// 	reader := bufio.NewReader(os.Stdin)
+// 	prompt = fmt.Sprintf("%s [%s]: ", prompt, defaultValue)
+// 	fmt.Printf("%s", prompt)
+// 	out, _ := reader.ReadString('\n')
+// 	if len(strings.TrimSpace(out)) == 0 {
+// 		return defaultValue
+// 	} else {
+// 		return strings.TrimSpace(out)
+// 	}
+// }
 
 func ParseYaml(file string, opts *map[string]interface{}) {
 	if fh, err := ioutil.ReadFile(file); err == nil {
